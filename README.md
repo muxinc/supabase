@@ -87,6 +87,8 @@ Both tables have Row Level Security (RLS) enabled with policies that block all c
 
 ## Development
 
+Running supabase locally requires Docker Desktop
+
 ```bash
 # Start local Supabase
 npm run dev

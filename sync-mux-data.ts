@@ -6,8 +6,6 @@ import Mux from '@mux/mux-node';
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
-const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
 
 // Validate environment variables
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -15,14 +13,14 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   process.exit(1);
 }
 
-if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
+if (!process.env.MUX_TOKEN_ID || !process.env.MUX_TOKEN_SECRET) {
   console.error('Missing required Mux environment variables');
   process.exit(1);
 }
 
 // Initialize clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-const mux = new Mux(MUX_TOKEN_ID, MUX_TOKEN_SECRET);
+const mux = new Mux();
 
 interface AssetData {
   mux_asset_id: string;
