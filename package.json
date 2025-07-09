@@ -2,9 +2,9 @@
   "name": "supabase-mux",
   "version": "1.0.0",
   "description": "Supabase integration for Mux video platform",
-  "main": "sync-mux-data.ts",
+  "main": "sync-mux.ts",
   "scripts": {
-    "sync": "npx ts-node sync-mux-data.ts",
+    "sync-mux": "npx ts-node sync-mux.ts",
     "dev": "supabase start",
     "dev:debug": "supabase start --debug",
     "stop": "supabase stop",
@@ -28,18 +28,19 @@
   "license": "MIT",
   "dependencies": {
     "@mux/mux-node": "^12.1.0",
-    "@supabase/supabase-js": "^2.45.4"
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^17.1.0"
   },
   "devDependencies": {
-    "supabase": "^2.30.4",
-    "typescript": "^5.8.3",
-    "ts-node": "^10.9.0",
     "@types/node": "^20.0.0",
-    "eslint": "^9.30.1",
     "@typescript-eslint/eslint-plugin": "^8.36.0",
     "@typescript-eslint/parser": "^8.36.0",
-    "prettier": "^3.6.2",
+    "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.5.1"
+    "eslint-plugin-prettier": "^5.5.1",
+    "prettier": "^3.6.2",
+    "supabase": "^2.30.4",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import Mux from '@mux/mux-node';
 
@@ -31,7 +32,7 @@ interface AssetData {
   aspect_ratio?: string;
   playback_ids: any[];
   tracks: any[];
-  errors: any[];
+  errors: { messages?: string[]; type?: string; } | null;
   master_access?: string;
   mp4_support?: string;
   normalize_audio?: boolean;
@@ -47,7 +48,7 @@ interface AssetData {
   input_info: any;
   video_quality?: string;
   resolution_tier?: string;
-  non_standard_input_reasons: any[];
+  non_standard_input_reasons: { audio_codec?: string; audio_edit_list?: 'non-standard'; pixel_aspect_ratio?: string; unexpected_media_file_parameters?: 'non-standard'; unsupported_pixel_format?: string; video_bitrate?: 'high'; video_codec?: string; video_edit_list?: 'non-standard'; video_frame_rate?: string; video_gop_size?: 'high'; video_resolution?: string; } | null;
   is_live?: boolean;
   updated_at: string;
 }
@@ -94,7 +95,7 @@ async function syncAssets(): Promise<void> {
         aspect_ratio: asset.aspect_ratio,
         playback_ids: asset.playback_ids || [],
         tracks: asset.tracks || [],
-        errors: asset.errors || [],
+        errors: asset.errors || null,
         master_access: asset.master_access,
         mp4_support: asset.mp4_support,
         normalize_audio: asset.normalize_audio,
@@ -107,10 +108,10 @@ async function syncAssets(): Promise<void> {
         source_asset_id: asset.source_asset_id,
         per_title_encode: asset.per_title_encode,
         upload_id: asset.upload_id,
-        input_info: asset.input_info || {},
+        input_info: (asset as any).input_info || {},
         video_quality: asset.video_quality,
         resolution_tier: asset.resolution_tier,
-        non_standard_input_reasons: asset.non_standard_input_reasons || [],
+        non_standard_input_reasons: asset.non_standard_input_reasons || null,
         is_live: asset.is_live,
         updated_at: new Date().toISOString(),
       };
@@ -122,7 +123,13 @@ async function syncAssets(): Promise<void> {
       });
 
       if (error) {
-        console.error(`Error upserting asset ${asset.id}:`, error);
+        console.error(`Error upserting asset ${asset.id}:`, {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          error: JSON.stringify(error, null, 2)
+        });
       } else {
         console.log(`Synced asset: ${asset.id}`);
       }
@@ -163,7 +170,7 @@ async function syncLiveStreams(): Promise<void> {
         reduced_latency: stream.reduced_latency,
         low_latency: stream.low_latency,
         simulcast_targets: stream.simulcast_targets || [],
-        target_latency: stream.target_latency,
+        target_latency: (stream as any).target_latency,
         updated_at: new Date().toISOString(),
       };
 
@@ -176,7 +183,13 @@ async function syncLiveStreams(): Promise<void> {
         });
 
       if (error) {
-        console.error(`Error upserting live stream ${stream.id}:`, error);
+        console.error(`Error upserting live stream ${stream.id}:`, {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          error: JSON.stringify(error, null, 2)
+        });
       } else {
         console.log(`Synced live stream: ${stream.id}`);
       }

@@ -5,7 +5,10 @@
       "Bash(npm run lint)",
       "Bash(npm run format:check:*)",
       "Bash(npm run format:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(npm run sync:*)"
     ],
     "deny": []
   }
