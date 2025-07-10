@@ -8,7 +8,14 @@
       "Bash(npx eslint:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(npm run sync:*)"
+      "Bash(npm run sync:*)",
+      "WebFetch(domain:www.mux.com)",
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }
