@@ -55,9 +55,11 @@ Deno.serve(async (req) => {
 })
 ```
 
-- calling `handleMuxWebhook(req)` will run all of your workflows
+- calling `handleMuxWebhook(req)` will run all of your workflows (more on that in a second)
 
-3. The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
+3. Create a `mux.toml` file in the `supabase/functions/mux-webhook/` directory. This is a placeholder for now. You'll need this to configure workflows.
+
+4. The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
   - Open up the supabase dashboard and copy the `mux-webhook` function URL, it should look something like: `https://xxxxxxx.supabase.co/functions/v1/mux-webhook`
   - Go to the Mux dashboard and configure this webhook endpoint for your environment
   - Make sure the environment on Mux's side where you are configuring this webhook matches the environment that your API keys are configured for in this project
@@ -79,21 +81,13 @@ _open up supabase/config.toml and set `verify_jwt = false` for this function_
 
 - This will create a function in the directory (just like any supabase function): `supabase/functions/content-moderation/`
 
-Now comes the magic, add a new file called `mux.toml` in that directory, so you will now have:
+Now comes the magic, open up `supabase/functions/mux-webhook/mux.toml` and add the trigger for this function:
 
-```
-supabase/functions/content-moderation/
-                                      deno.json
-                                      index.ts
-                                      .npmrc
-                                      mux.toml
-```
-
-- Open up `mux.toml` and add the `events` array for when you want this workflow to run:
-- For our example, we want this function to run on the 'video.asset.ready' event
+This says that the `content-moderation` workflow defined in `supabase/functions/content-moderation` will be triggered when the `video.asset.ready` webhook fires
 
 ```
 # mux.toml
+[workflows.content-moderation]
 events = ["video.asset.ready"]
 ```
 

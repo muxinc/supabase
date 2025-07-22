@@ -1,6 +1,7 @@
 import Mux from 'https://esm.sh/@mux/mux-node@12';
 import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { parse as parseToml } from 'jsr:@std/toml';
 
 console.log('Deno', Deno.env.get('MUX_TOKEN_ID'));
 
@@ -14,62 +15,70 @@ interface MuxConfig {
   events: string[];
 }
 
+interface WorkflowConfig {
+  [functionName: string]: string[];
+}
+
 async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
   const functionEventMap = new Map<string, string[]>();
-  // In deployed environment, functions are in different locations
-  const functionsDir = Deno.env.get('FUNCTIONS_DIR') || '/home/deno/functions';
+  
+  // Try to find the centralized mux.toml file
+  const possibleTomlPaths = [
+    './mux.toml',
+    '../mux.toml',
+    '../../mux.toml',
+    './supabase/functions/mux-webhook/mux.toml',
+    '/home/deno/functions/mux-webhook/mux.toml'
+  ];
 
-  try {
-    // Get all function directories dynamically
-    const functionDirs: string[] = [];
-
+  for (const tomlPath of possibleTomlPaths) {
     try {
-      const dirEntries = Deno.readDirSync(functionsDir);
-      for (const entry of dirEntries) {
-        if (entry.isDirectory) {
-          functionDirs.push(entry.name);
-        }
-      }
-    } catch {
-      console.warn('Could not scan functions directory, using fallback');
-      functionDirs.push('content-moderation', 'hello-world', 'mux-webhook');
-    }
-
-    for (const functionDir of functionDirs) {
-      try {
-        const tomlPath = `${functionsDir}/${functionDir}/mux.toml`;
-        const tomlContent = Deno.readTextFileSync(tomlPath);
-        const config = parseSimpleToml(tomlContent);
-
-        if (config.events && Array.isArray(config.events)) {
-          functionEventMap.set(functionDir, config.events);
+      const tomlContent = Deno.readTextFileSync(tomlPath);
+      const config = parseWorkflowToml(tomlContent);
+      
+      for (const [functionName, events] of Object.entries(config)) {
+        if (Array.isArray(events)) {
+          functionEventMap.set(functionName, events);
           console.log(
-            `Found mux function: ${functionDir} handles events:`,
-            config.events
+            `Found mux function: ${functionName} handles events:`,
+            events
           );
         }
-      } catch {
-        // Silently skip functions without mux.toml
       }
+      
+      console.log(`Loaded mux configuration from: ${tomlPath}`);
+      break;
+    } catch {
+      // Continue to next path
     }
-  } catch (error) {
-    console.error('Error scanning for mux functions:', error);
+  }
+
+  if (functionEventMap.size === 0) {
+    console.warn('Could not load mux.toml, using fallback configuration');
+    functionEventMap.set('content-moderation', ['video.asset.ready']);
   }
 
   return functionEventMap;
 }
 
-function parseSimpleToml(content: string): MuxConfig {
-  const config: MuxConfig = { events: [] };
-
-  // Simple TOML parser for events array
-  const eventsMatch = content.match(/events\s*=\s*\[(.*?)\]/s);
-  if (eventsMatch) {
-    const eventsStr = eventsMatch[1];
-    config.events = eventsStr
-      .split(',')
-      .map((event) => event.trim().replace(/['"]/g, ''))
-      .filter((event) => event.length > 0);
+function parseWorkflowToml(content: string): WorkflowConfig {
+  const config: WorkflowConfig = {};
+  
+  try {
+    const parsed = parseToml(content) as any;
+    
+    if (parsed.workflows && typeof parsed.workflows === 'object') {
+      for (const [functionName, workflow] of Object.entries(parsed.workflows)) {
+        if (workflow && typeof workflow === 'object' && 'events' in workflow) {
+          const events = (workflow as any).events;
+          if (Array.isArray(events)) {
+            config[functionName] = events;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to parse TOML:', error);
   }
 
   return config;
@@ -89,7 +98,7 @@ async function invokeMuxFunction(
     const { data: _data, error } = await supabase.functions.invoke(
       functionName,
       {
-        body: { muxEvent: event },
+        body: event,
       }
     );
 
@@ -113,7 +122,7 @@ export async function handleMuxWebhook(req: Request): Promise<void> {
 
     const event = (await req.json() as UnwrapWebhookEvent);
     
-    console.log('Received Mux webhook:', JSON.stringify(event, null, 2));
+    console.log('Received Mux webhook:', event.type);
 
     // Scan for functions that handle this event type
     const functionEventMap = await scanForMuxFunctions();

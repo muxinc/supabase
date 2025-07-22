@@ -1,3 +1,7 @@
 {
-  "imports": {}
+  "imports": {
+    "ai": "npm:ai@4",
+    "@ai-sdk/anthropic": "npm:@ai-sdk/anthropic@1",
+    "zod": "npm:zod@4"
+  }
 }

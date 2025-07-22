@@ -341,7 +341,7 @@ import_map = "./functions/mux-webhook/deno.json"
 entrypoint = "./functions/mux-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/mux-webhook/*.html" ]
+static_files = [ "./functions/**/mux.toml" ]
 
 [functions.content-moderation]
 enabled = true
