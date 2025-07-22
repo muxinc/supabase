@@ -1,13 +1,35 @@
-README:
+# supabase-mux
 
-# Add env vars to Edge Functions in the supabase dashboard
+Supabase-Mux will connect Supabase to your Mux account, so that you can build a robust Video integration driven by AI workflows that you control, while Mux handles the video infrastructure behind the scenes.
+
+✅ What this integration does:
+
+- Syncs data from your Mux account to Supabase
+- Creates several database tables directly in your Supabase instance
+- Save the current state of Mux Assets & Mux Live Streams, directly in your supabase database
+- Save metadata about Assets and Live Streams in your database
+- Expose integration points so that you can create your own workflows around your video data. This is not limited to “AI”, but this is the most common use case.
+
+Think about things like: when a new asset is ready, you want to
+
+- Create translations
+- Create summarizations
+- Create chapters
+- Create vector embeddings
+- Extract audio or thumbnails and analyze the content for tagging, labeling, grouping or content moderation
+
+❌ What this integration DOES NOT do:
+
+- Run AI models, decide what model to use or create prompts for you
+
+## Step 1: Add env vars to Edge Functions in the supabase dashboard
 
 - In the Supabase *Edge Functions* dashboard, add Mux env vars:
 - `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`
 
 Note that after updating env vars your functions have to be re-deployed. Keep this in mind when updating env variables.
 
-# Create a supabase webhook handler:
+## Step 2: Create a supabase webhook handler:
 
 ```
 npx supabase functions new mux-webhook
@@ -34,9 +56,9 @@ The very last step is to deploy the webhook handler `npm run functions:deploy` w
   - Go to the Mux dashboard and configure this webhook endpoint for your environment
   - Make sure the environment on Mux's side where you are configuring this webhook matches the environment that your API keys are configured for in this project
 
-# Create workflows
+## Step 3: Create your workflows
 
-Workflows is code that you run with your own business logic which can include calls out to LLMS or whatever your heart desires.
+Workflows are code that you run with your own business logic which can include calls out to LLMS or whatever you want to do.
 
 Let's use the example of creating a workflow to handle **content moderation** -- a common thing that UGC platforms need to build.
 
