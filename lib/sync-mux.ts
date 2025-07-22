@@ -99,7 +99,9 @@ async function syncAssets(): Promise<void> {
 
     // Process assets using cursor-based pagination
     do {
-      console.log(`Fetching and processing assets batch... (processed so far: ${totalProcessed})`);
+      console.log(
+        `Fetching and processing assets batch... (processed so far: ${totalProcessed})`
+      );
       const listParams: any = { limit: 100 };
       if (nextCursor) {
         listParams.cursor = nextCursor;
@@ -179,7 +181,9 @@ async function syncLiveStreams(): Promise<void> {
 
     // Process live streams using cursor-based pagination
     do {
-      console.log(`Fetching and processing live streams batch... (processed so far: ${totalProcessed})`);
+      console.log(
+        `Fetching and processing live streams batch... (processed so far: ${totalProcessed})`
+      );
       const listParams: any = { limit: 100 };
       if (nextCursor) {
         listParams.cursor = nextCursor;

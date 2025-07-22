@@ -1,5 +1,12 @@
 README:
 
+# Add env vars to Edge Functions in the supabase dashboard
+
+- In the Supabase *Edge Functions* dashboard, add Mux env vars:
+- `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`
+
+Note that after updating env vars your functions have to be re-deployed. Keep this in mind when updating env variables.
+
 # Create a supabase webhook handler:
 
 ```
@@ -50,6 +57,11 @@ Deno.serve(async (req) => {
 
 - calling `handleMuxWebhook(req)` will run all of your workflows
 
+3. The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
+  - Open up the supabase dashboard and copy the `mux-webhook` function URL, it should look something like: `https://xxxxxxx.supabase.co/functions/v1/mux-webhook`
+  - Go to the Mux dashboard and configure this webhook endpoint for your environment
+  - Make sure the environment on Mux's side where you are configuring this webhook matches the environment that your API keys are configured for in this project
+
 # Create workflows
 
 Workflows is code that you run with your own business logic which can include calls out to LLMS or whatever your heart desires.
@@ -84,3 +96,15 @@ supabase/functions/content-moderation/
 # mux.toml
 events = ["video.asset.ready"]
 ```
+
+# Commands
+
+`npm run migrate` -- will run supabase migrations
+
+# TODO
+
+- [ ] Run linting in CI
+- [ ] Add tests
+- [ ] Fix lint warnings around using TS `any`
+- [ ] Fix lint warnings around using TS `any`
+- [ ] Add webhook signature verification

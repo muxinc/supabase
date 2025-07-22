@@ -4,9 +4,10 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { handleMuxWebhook } from '../../../lib/webhook-handler'
+import { handleMuxWebhook } from '../../../lib/webhook-handler.ts'
 
 Deno.serve(async (req) => {
+  console.log('Received mux-webhook');
   try {
     if (req.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 })
