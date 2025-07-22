@@ -13,53 +13,23 @@ Note that after updating env vars your functions have to be re-deployed. Keep th
 npx supabase functions new mux-webhook
 ```
 
-_open up supabase/config.toml and set `verify_jwt = false` for this function_
+Open up `supabase/config.toml` and set `verify_jwt = false` for this function
 
 - This will create a function in `supabase/functions/mux-webhook/`
 
-2. Open up the webhook function that you just created and edit it
+2. Open up the webhook function that you just created and edit it to connect the `handleMuxWebhook` handler
 
 ```js
 // supabase/functions/mux-webhook/index.js
-
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { handleMuxWebhook } from '../../../lib/webhook-handler'
 
-Deno.serve(async (req) => {
-  try {
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 })
-    }
-
-    await handleMuxWebhook(req)
-
-    return new Response(
-      JSON.stringify({ message: 'Webhook processed successfully' }),
-      { headers: { "Content-Type": "application/json" } },
-    )
-  } catch (error) {
-    console.error('Webhook processing failed:', error)
-    return new Response(
-      JSON.stringify({ error: 'Webhook processing failed' }),
-      { 
-        status: 400,
-        headers: { "Content-Type": "application/json" } 
-      },
-    )
-  }
-})
+Deno.serve(handleMuxWebhook);
 ```
 
-- calling `handleMuxWebhook(req)` will run all of your workflows (more on that in a second)
+- calling `handleMuxWebhook(req)` will run all of your workflows
 
-3. Create a `mux.toml` file in the `supabase/functions/mux-webhook/` directory. This is a placeholder for now. You'll need this to configure workflows.
-
-4. The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
+The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
   - Open up the supabase dashboard and copy the `mux-webhook` function URL, it should look something like: `https://xxxxxxx.supabase.co/functions/v1/mux-webhook`
   - Go to the Mux dashboard and configure this webhook endpoint for your environment
   - Make sure the environment on Mux's side where you are configuring this webhook matches the environment that your API keys are configured for in this project
@@ -77,11 +47,11 @@ To create a workflow, start with a standard supabase function:
 npx supabase functions new content-moderation
 ```
 
-_open up supabase/config.toml and set `verify_jwt = false` for this function_
+Open `supabase/config.toml` and set `verify_jwt = false` for this function
 
 - This will create a function in the directory (just like any supabase function): `supabase/functions/content-moderation/`
 
-Now comes the magic, open up `supabase/functions/mux-webhook/mux.toml` and add the trigger for this function:
+Now comes the magic, create a file in the `mux-webhook` directory called mux.toml: `supabase/functions/mux-webhook/mux.toml`. Add a trigger for this function:
 
 This says that the `content-moderation` workflow defined in `supabase/functions/content-moderation` will be triggered when the `video.asset.ready` webhook fires
 
@@ -91,9 +61,66 @@ This says that the `content-moderation` workflow defined in `supabase/functions/
 events = ["video.asset.ready"]
 ```
 
-# Commands
+## Example workflow file
 
-`npm run migrate` -- will run supabase migrations
+The only thing you need to do in your workflow file is call:
+
+```js
+await writeWorkflowOutput({
+  slug: 'content-moderation', // slug is an identifier for the workflow
+  version: '1.1',            // version for this workflow
+  mux_asset_id: '1.1',       // every workflow should correspond to a MuxAsset
+  started_at: new Date(),
+  completed_at: new Date(),
+  output_data: {}            // arbitrary JSON that you want to save as the output of this workflow
+})
+```
+
+```js
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
+
+// Setup type definitions for built-in Supabase Runtime APIs
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
+import { writeWorkflowOutput } from '../../../lib/workflow-output.ts'
+
+async function requestModeration (playbackId: string) {
+  // Do your moderation logic, make API calls to LLMs, etc.
+  // return a JSON object you want to save as the Workflow output
+  return {
+    adult: 0.0,
+    voilence: 0.0,
+    suggestive: 0.2
+  }
+}
+
+Deno.serve(async (req) => {
+  const start = new Date();
+  const event = (await req.json() as UnwrapWebhookEvent);
+  const asset = event.data
+  if (!asset) {
+    console.log('No asset');
+    return new Response('No asset provided', { status: 400 });
+  }
+  const playbackId = asset.playback_ids && asset.playback_ids[0] && asset.playback_ids[0].id;
+  if (!playbackId) {
+    console.log('No playbackId');
+    return new Response('No playbackId provided', { status: 400 });
+  }
+  const resp = await requestModeration(playbackId);
+  const complete = new Date();
+  await writeWorkflowOutput({
+    slug: 'content-moderation',
+    version: '1',
+    started_at: start,
+    completed_at: complete,
+    mux_asset_id: asset.id,
+    output_data: resp
+  });
+});
+```
 
 # TODO
 
@@ -102,3 +129,4 @@ events = ["video.asset.ready"]
 - [ ] Fix lint warnings around using TS `any`
 - [ ] Fix lint warnings around using TS `any`
 - [ ] Add webhook signature verification
+- [ ] Figure out a backstory

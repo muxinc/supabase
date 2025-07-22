@@ -1,19 +1,9 @@
-import Mux from 'https://esm.sh/@mux/mux-node@12';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { parse as parseToml } from 'jsr:@std/toml';
 
 console.log('Deno', Deno.env.get('MUX_TOKEN_ID'));
-
-const mux = new Mux({
-  tokenId: Deno.env.get('MUX_TOKEN_ID'),
-  tokenSecret: Deno.env.get('MUX_TOKEN_SECRET'),
-  webhookSecret: Deno.env.get('MUX_WEBHOOK_SECRET')
-});
-
-interface MuxConfig {
-  events: string[];
-}
 
 interface WorkflowConfig {
   [functionName: string]: string[];
@@ -21,21 +11,21 @@ interface WorkflowConfig {
 
 async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
   const functionEventMap = new Map<string, string[]>();
-  
+
   // Try to find the centralized mux.toml file
   const possibleTomlPaths = [
     './mux.toml',
     '../mux.toml',
     '../../mux.toml',
     './supabase/functions/mux-webhook/mux.toml',
-    '/home/deno/functions/mux-webhook/mux.toml'
+    '/home/deno/functions/mux-webhook/mux.toml',
   ];
 
   for (const tomlPath of possibleTomlPaths) {
     try {
       const tomlContent = Deno.readTextFileSync(tomlPath);
       const config = parseWorkflowToml(tomlContent);
-      
+
       for (const [functionName, events] of Object.entries(config)) {
         if (Array.isArray(events)) {
           functionEventMap.set(functionName, events);
@@ -45,7 +35,7 @@ async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
           );
         }
       }
-      
+
       console.log(`Loaded mux configuration from: ${tomlPath}`);
       break;
     } catch {
@@ -63,10 +53,10 @@ async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
 
 function parseWorkflowToml(content: string): WorkflowConfig {
   const config: WorkflowConfig = {};
-  
+
   try {
     const parsed = parseToml(content) as any;
-    
+
     if (parsed.workflows && typeof parsed.workflows === 'object') {
       for (const [functionName, workflow] of Object.entries(parsed.workflows)) {
         if (workflow && typeof workflow === 'object' && 'events' in workflow) {
@@ -112,7 +102,10 @@ async function invokeMuxFunction(
   }
 }
 
-export async function handleMuxWebhook(req: Request): Promise<void> {
+export async function handleMuxWebhook(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
   try {
     // TODO -- use unwrap when signature verification is added
     // const body = await req.text();
@@ -120,8 +113,10 @@ export async function handleMuxWebhook(req: Request): Promise<void> {
     //  -- having an issue: "Webhook processing failed: Error: [unenv] crypto.createHmac is not implemented yet
     // const event = mux.webhooks.unwrap(body, headers);
 
-    const event = (await req.json() as UnwrapWebhookEvent);
-    
+    const body = await req.text();
+
+    const event = JSON.parse(body) as UnwrapWebhookEvent;
+
     console.log('Received Mux webhook:', event.type);
 
     // Scan for functions that handle this event type
@@ -149,8 +144,18 @@ export async function handleMuxWebhook(req: Request): Promise<void> {
     } else {
       console.log('No functions configured to handle event type:', event.type);
     }
+    return new Response(
+      JSON.stringify({ message: 'Webhook processed successfully' }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Failed to process Mux webhook:', error);
-    throw error;
+    return new Response(
+      JSON.stringify({ error: 'Webhook processing failed' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
