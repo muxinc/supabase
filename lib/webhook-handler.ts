@@ -1,9 +1,13 @@
 import Mux from 'https://esm.sh/@mux/mux-node@12';
+import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+console.log('Deno', Deno.env.get('MUX_TOKEN_ID'));
 
 const mux = new Mux({
   tokenId: Deno.env.get('MUX_TOKEN_ID'),
-  tokenSecret: Deno.env.get('MUX_TOKEN_SECRET')
+  tokenSecret: Deno.env.get('MUX_TOKEN_SECRET'),
+  webhookSecret: Deno.env.get('MUX_WEBHOOK_SECRET')
 });
 
 interface MuxConfig {
@@ -12,8 +16,8 @@ interface MuxConfig {
 
 async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
   const functionEventMap = new Map<string, string[]>();
-  const functionsDir =
-    '/Users/djhaveri/code/@muxinc/supabase-mux/supabase/functions';
+  // In deployed environment, functions are in different locations
+  const functionsDir = Deno.env.get('FUNCTIONS_DIR') || '/home/deno/functions';
 
   try {
     // Get all function directories dynamically
@@ -101,11 +105,14 @@ async function invokeMuxFunction(
 
 export async function handleMuxWebhook(req: Request): Promise<void> {
   try {
-    const body = await req.text();
-    const headers = Object.fromEntries(req.headers.entries());
+    // TODO -- use unwrap when signature verification is added
+    // const body = await req.text();
+    // const headers = Object.fromEntries(req.headers.entries());
+    //  -- having an issue: "Webhook processing failed: Error: [unenv] crypto.createHmac is not implemented yet
+    // const event = mux.webhooks.unwrap(body, headers);
 
-    const event = mux.webhooks.unwrap(body, headers);
-
+    const event = (await req.json() as UnwrapWebhookEvent);
+    
     console.log('Received Mux webhook:', JSON.stringify(event, null, 2));
 
     // Scan for functions that handle this event type

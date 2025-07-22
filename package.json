@@ -10,7 +10,7 @@
     "stop": "supabase stop",
     "reset": "supabase db reset",
     "migrate": "supabase db push",
-    "functions:serve": "supabase functions serve",
+    "functions:serve": "supabase functions serve --env-file .env",
     "functions:deploy": "supabase functions deploy",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
