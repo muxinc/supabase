@@ -1,8 +1,14 @@
-import Mux from 'https://esm.sh/@mux/mux-node@8';
+import Mux from 'https://esm.sh/@mux/mux-node@12';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const mux = new Mux({
   webhookSecret: Deno.env.get('MUX_WEBHOOK_SECRET'),
+});
+
+
+const client = new Mux({
+  tokenId: Deno.env.get('MUX_TOKEN_ID'),
+  tokenSecret: Deno.env.get('MUX_TOKEN_SECRET')
 });
 
 interface MuxConfig {
