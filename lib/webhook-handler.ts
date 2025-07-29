@@ -1,9 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Mux from 'npm:@mux/mux-node@12';
+import type { UnwrapWebhookEvent } from 'npm:@mux/mux-node@12';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { parse as parseToml } from 'jsr:@std/toml';
 
-console.log('Deno', Deno.env.get('MUX_TOKEN_ID'));
+const mux = new Mux();
 
 interface WorkflowConfig {
   [functionName: string]: string[];
@@ -107,14 +108,7 @@ export async function handleMuxWebhook(req: Request): Promise<Response> {
     return new Response('Method not allowed', { status: 405 });
   }
   try {
-    // TODO -- use unwrap when signature verification is added
-    // const body = await req.text();
-    // const headers = Object.fromEntries(req.headers.entries());
-    //  -- having an issue: "Webhook processing failed: Error: [unenv] crypto.createHmac is not implemented yet
-    // const event = mux.webhooks.unwrap(body, headers);
-
     const body = await req.text();
-
     const event = JSON.parse(body) as UnwrapWebhookEvent;
 
     console.log('Received Mux webhook:', event.type);
