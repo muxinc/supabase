@@ -6,74 +6,90 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
 import { writeWorkflowOutput } from '../../../lib/workflow-output.ts'
-import { z } from 'zod';
+import OpenAI from "openai";
 
 const deliveryDomain = "mux.com"; // replace this with a custom delivery domain if that's what you're using
 
-const anthropic = createAnthropic({
-  apiKey: Deno.env.get('ANTHROPIC_API_KEY')
+const openaiClient = new OpenAI({
+  apiKey: Deno.env.get('OPENAI_API_KEY')
 });
 
 export function getImageBaseUrl() {
   return `https://image.${deliveryDomain}`;
 }
 
-export function getThumbnailUrls ({ playbackId, duration }: { playbackId: string, duration: number }): string[] {
-  const timestamps = [(duration * 0.25), (duration * 0.33),  (duration * 0.5), (duration * 0.66), (duration * 0.75)];
-  const urls = timestamps.map((time) => `${getImageBaseUrl()}/${playbackId}/thumbnail.png?time=${time}`);
+export function getThumbnailUrls({ playbackId, duration }: { playbackId: string; duration: number }): string[] {
+  const timestamps: number[] = [];
+
+  if (duration <= 50) {
+    // Generate 5 evenly spaced timestamps
+    const interval = duration / 6; // 6 intervals → 5 points in between
+    for (let i = 1; i <= 5; i++) {
+      timestamps.push(Math.round(i * interval));
+    }
+  } else {
+    // One thumbnail every 10 seconds (excluding duration if not multiple of 10)
+    for (let time = 0; time < duration; time += 10) {
+      timestamps.push(time);
+    }
+  }
+
+  const urls = timestamps.map(
+    (time) => `${getImageBaseUrl()}/${playbackId}/thumbnail.png?time=${time}`
+  );
+
   return urls;
 }
 
-async function requestModeration (imageUrls: string[]) {
-  const imageParts = imageUrls.map(url => ({
-    type: 'image' as const,
-    image: url
-  }));
 
-  const textPart = {
-    type: 'text' as const,
-    text: `You are a helpful AI assistant that is in charge of content moderation for a UGC video platform.
+async function requestModeration(imageUrls: string[]) {
+  const moderationPromises = imageUrls.map(async (url) => {
+    console.log(`Moderating image: ${url}`);
 
-Please analyze these ${imageUrls.length} images for content moderation and provide scores for adult content, suggestive content, and violence (0-1 scale for each).
+    try {
+      const moderation = await openaiClient.moderations.create({
+        model: "omni-moderation-latest",
+        input: [
+          {
+            type: "image_url",
+            image_url: {
+              url: url,
+            },
+          },
+        ],
+      });
 
-Return ONLY a valid JSON object with a "scores" array containing one object per image with:
-- url: the image URL
-- adult: score from 0-1 for adult content
-- suggestive: score from 0-1 for suggestive content
-- violence: score from 0-1 for violence
+      const categoryScores = moderation.results[0].category_scores;
 
-Example format:
-{
-  "scores": [
-    { "url": "${imageUrls[0] || 'example.jpg'}", "adult": 0.1, "suggestive": 0.2, "violence": 0.0 }
-  ]
-}
-
-Please maintain the same order as the images provided and return only the JSON, no other text.`
-  };
-
-  const { text } = await generateText({
-    model: anthropic('claude-3-5-sonnet-20241022'),
-    messages: [
-      {
-        role: 'user',
-        content: [textPart, ...imageParts]
+      if (moderation.results[0].flagged) {
+        console.warn("Image flagged for moderation.");
+        console.log(`Sexual: ${categoryScores.sexual}, Violence: ${categoryScores.violence}`);
       }
-    ]
+
+      return {
+        url,
+        adult: categoryScores.sexual || 0,
+        violence: categoryScores.violence || 0,
+        suggestive: null,
+        error: false
+      };
+
+    } catch (error) {
+      console.error("Failed to moderate image:", error);
+
+      return {
+        url,
+        adult: 0,
+        violence: 0,
+        suggestive: null,
+        error: true,
+      };
+    }
   });
 
-  try {
-    const parsedResult = JSON.parse(text);
-    console.log('moderation result', parsedResult);
-    return parsedResult;
-  } catch (error) {
-    console.error('Failed to parse moderation response:', error);
-    console.log('Raw response:', text);
-    throw new Error('Failed to parse moderation response as JSON');
-  }
+  const scores = await Promise.all(moderationPromises);
+  return { scores };
 }
 
 Deno.serve(async (req) => {
