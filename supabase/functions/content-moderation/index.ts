@@ -71,7 +71,7 @@ async function requestModeration(imageUrls: string[]) {
         url,
         adult: categoryScores.sexual || 0,
         violence: categoryScores.violence || 0,
-        suggestive: 0,
+        suggestive: null,
         error: false
       };
 
@@ -82,7 +82,7 @@ async function requestModeration(imageUrls: string[]) {
         url,
         adult: 0,
         violence: 0,
-        suggestive: 0,
+        suggestive: null,
         error: true,
       };
     }
