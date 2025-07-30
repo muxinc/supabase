@@ -1,0 +1,65 @@
+{
+  "type": "video.asset.ready",
+  "request_id": null,
+  "object": {
+    "type": "asset",
+    "id": "dYMj6ypJggHFmpftUEKa3ueBv7GQMRNB"
+  },
+  "id": "187acbc1-c388-a8fd-74d3-cd56cf024ef5",
+  "environment": {
+    "name": "Development",
+    "id": "in83gi"
+  },
+  "data": {
+    "video_quality": "premium",
+    "tracks": [
+      {
+        "type": "video",
+        "max_width": 3840,
+        "max_height": 2160,
+        "max_frame_rate": 29.97,
+        "id": "01MbdwKxt022tcT4X3cYN02MaYlOjykEOGX",
+        "duration": 25.4254
+      },
+      {
+        "type": "audio",
+        "status": "ready",
+        "primary": true,
+        "name": "Default",
+        "max_channels": 2,
+        "language_code": "und",
+        "id": "NUvdvkPbtZh01nXzu014sDBFlqd5x3201iK2011GLMqQVbgDTpKosdSIsQ"
+      }
+    ],
+    "status": "ready",
+    "resolution_tier": "2160p",
+    "progress": {
+      "state": "completed",
+      "progress": 100
+    },
+    "playback_ids": [
+      {
+        "policy": "public",
+        "id": "7ll7vxtalm9Pe8dNmqOdNEtgoEgXcyfE"
+      }
+    ],
+    "mp4_support": "none",
+    "meta": {
+      "title": "xcfg"
+    },
+    "max_stored_resolution": "UHD",
+    "max_stored_frame_rate": 29.97,
+    "max_resolution_tier": "2160p",
+    "master_access": "none",
+    "ingest_type": "on_demand_url",
+    "id": "dYMj6ypJggHFmpftUEKa3ueBv7GQMRNB",
+    "encoding_tier": "premium",
+    "duration": 25.458767,
+    "created_at": 1753869285,
+    "aspect_ratio": "16:9"
+  },
+  "created_at": "2025-07-30T09:54:49.069000Z",
+  "attempts": [],
+  "accessor_source": null,
+  "accessor": null
+}
