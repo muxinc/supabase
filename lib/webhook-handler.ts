@@ -107,11 +107,23 @@ export async function handleMuxWebhook(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
   try {
     const body = await req.text();
     const event = JSON.parse(body) as UnwrapWebhookEvent;
 
     console.log('Received Mux webhook:', event.type);
+
+    const result = await supabase.schema('pgmq_public').rpc('send', {
+      queue_name: 'mux_events',
+      message: event,
+    })
+    console.log(result)
+
 
     // Scan for functions that handle this event type
     const functionEventMap = await scanForMuxFunctions();
