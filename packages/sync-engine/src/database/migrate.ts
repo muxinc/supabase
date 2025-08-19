@@ -14,7 +14,7 @@ function getDirname(): string {
       const __filename = fileURLToPath(import.meta.url);
       return path.dirname(__filename);
     }
-  } catch (error) {
+  } catch {
     // Fallback for cases where import.meta.url is not available
   }
 
@@ -22,7 +22,7 @@ function getDirname(): string {
   try {
     // @ts-ignore - __dirname is available in CommonJS context
     return __dirname;
-  } catch (error) {
+  } catch {
     // If neither works, use a relative path from the current working directory
     return path.join(process.cwd(), 'packages/sync-engine/src/database');
   }

@@ -72,6 +72,7 @@ export default [
   {
     ignores: [
       'dist/',
+      'packages/*/dist/',
       'node_modules/',
       'supabase/migrations/',
       'supabase/functions/',

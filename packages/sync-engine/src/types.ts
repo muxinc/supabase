@@ -1,4 +1,7 @@
-export type Logger = Pick<Console, 'info' | 'error' | 'warn' | 'debug'>;
+export type Logger = Pick<
+  globalThis.Console,
+  'info' | 'error' | 'warn' | 'debug'
+>;
 
 export type MuxSyncConfig = {
   /** Postgres database URL including authentication */

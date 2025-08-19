@@ -192,19 +192,6 @@ export class MuxSync {
     }
   }
 
-  private async fetchOrUseWebhookData<T extends { id?: string }>(
-    entity: T,
-    fetchFn: (id: string) => Promise<T>
-  ): Promise<T> {
-    if (!entity.id) return entity;
-
-    if (this.config.revalidateEntityViaMuxApi) {
-      return fetchFn(entity.id);
-    }
-
-    return entity;
-  }
-
   async syncBackfill(params?: SyncBackfillParams): Promise<SyncBackfill> {
     const { object } = params ?? {};
     let muxAssets, muxLiveStreams, muxUploads;
@@ -235,6 +222,19 @@ export class MuxSync {
       muxLiveStreams,
       muxUploads,
     };
+  }
+
+  private async fetchOrUseWebhookData<T extends { id?: string }>(
+    entity: T,
+    fetchFn: (id: string) => Promise<T>
+  ): Promise<T> {
+    if (!entity.id) return entity;
+
+    if (this.config.revalidateEntityViaMuxApi) {
+      return fetchFn(entity.id);
+    }
+
+    return entity;
   }
 
   private async upsertAssets(assets: Mux.Video.Assets.Asset[]): Promise<any[]> {
@@ -331,7 +331,7 @@ export class MuxSync {
     });
   }
 
-  async syncMuxLiveStreams(): Promise<Sync> {
+  private async syncMuxLiveStreams(): Promise<Sync> {
     return this.genericSync<Mux.Video.LiveStreams.LiveStream>(
       'live streams',
       (params) => this.mux.video.liveStreams.list(params),
@@ -339,7 +339,7 @@ export class MuxSync {
     );
   }
 
-  async syncMuxUploads(): Promise<Sync> {
+  private async syncMuxUploads(): Promise<Sync> {
     return this.genericSync<Mux.Video.Uploads.Upload>(
       'uploads',
       (params) => this.mux.video.uploads.list(params),
@@ -423,7 +423,7 @@ export class MuxSync {
             const response = await this.mux.video.assets.retrieve(id);
             const asset = (response as any).data ?? (response as any);
             fetchedAssets.push(asset);
-          } catch (e) {
+          } catch {
             this.logger.warn?.(
               `Failed fetching asset ${id} referenced by ${config.entityName}`
             );
