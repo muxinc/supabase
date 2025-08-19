@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup'
+import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -15,7 +15,7 @@ export default defineConfig({
   esbuildOptions(options) {
     options.define = {
       ...options.define,
-      'process.env.NODE_ENV': '"production"'
-    }
-  }
-}) 
+      'process.env.NODE_ENV': '"production"',
+    };
+  },
+});

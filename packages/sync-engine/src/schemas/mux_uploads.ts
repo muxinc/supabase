@@ -1,4 +1,4 @@
-import type { EntitySchema } from './types'
+import type { EntitySchema } from './types';
 
 export const muxUploadsSchema: EntitySchema = {
   properties: [
@@ -9,8 +9,6 @@ export const muxUploadsSchema: EntitySchema = {
     'cors_origin',
     'url',
     'error',
-    'test'
+    'test',
   ],
-} as const
-
-
+} as const;

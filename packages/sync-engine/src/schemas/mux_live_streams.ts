@@ -1,4 +1,4 @@
-import type { EntitySchema } from './types'
+import type { EntitySchema } from './types';
 
 export const muxLiveStreamsSchema: EntitySchema = {
   properties: [
@@ -25,6 +25,6 @@ export const muxLiveStreamsSchema: EntitySchema = {
     'active_ingest_protocol',
     'meta',
     'simulcast_targets',
-    'srt_passphrase'
+    'srt_passphrase',
   ],
-} as const
+} as const;

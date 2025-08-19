@@ -1,5 +1,5 @@
-export { MuxSync } from './muxSync'
+export { MuxSync } from './muxSync';
 
-export type * from './types'
+export type * from './types';
 
-export { runMigrations } from './database/migrate'
+export { runMigrations } from './database/migrate';

@@ -1,3 +1,3 @@
 export interface EntitySchema {
-  readonly properties: string[]
+  readonly properties: string[];
 }

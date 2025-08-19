@@ -1,4 +1,4 @@
-import type { EntitySchema } from './types'
+import type { EntitySchema } from './types';
 
 export const muxAssetsSchema: EntitySchema = {
   properties: [
@@ -29,6 +29,6 @@ export const muxAssetsSchema: EntitySchema = {
     'max_resolution_tier',
     'is_live',
     'master',
-    'recording_times'
+    'recording_times',
   ],
-} as const
+} as const;
