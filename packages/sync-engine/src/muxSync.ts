@@ -157,26 +157,17 @@ export class MuxSync {
         }
 
         // Simulcast targets
-        //tiene el live_stream_id en el webhook
-        // case 'video.live_stream.simulcast_target.created':
-        // case 'video.live_stream.simulcast_target.idle':
-        // case 'video.live_stream.simulcast_target.starting':
-        // case 'video.live_stream.simulcast_target.broadcasting':
-        // case 'video.live_stream.simulcast_target.errored':
-        // case 'video.live_stream.simulcast_target.deleted':
-        // case 'video.live_stream.simulcast_target.updated': {
-        //   const liveStreamId = (event.data as any)?.live_stream_id as string | undefined
-        //   if (liveStreamId) {
-        //     try {
-        //       const response = await this.mux.video.liveStreams.retrieve(liveStreamId)
-        //       const liveStream = (response as any).data ?? (response as any)
-        //       await this.upsertLiveStreams([liveStream])
-        //     } catch (error) {
-        //       this.logger.warn?.('Failed to fetch live stream for simulcast event', error)
-        //     }
-        //   }
-        //   break
-        // }
+        case 'video.live_stream.simulcast_target.created':
+        case 'video.live_stream.simulcast_target.idle':
+        case 'video.live_stream.simulcast_target.starting':
+        case 'video.live_stream.simulcast_target.broadcasting':
+        case 'video.live_stream.simulcast_target.errored':
+        case 'video.live_stream.simulcast_target.deleted':
+        case 'video.live_stream.simulcast_target.updated': {
+          const simulcastTargetData = event.data as any;
+          await this.handleLiveStreamSimulcastTargetEvent(simulcastTargetData);
+          break;
+        }
 
         default:
           this.logger.warn('Unhandled webhook event', event.type);
@@ -375,6 +366,36 @@ export class MuxSync {
   ): Promise<void> {
     const assetId = (track as any).asset_id;
     await this.handleAssetUpdateEvent(assetId, 'track');
+  }
+
+  private async handleLiveStreamUpdateEvent(
+    liveStreamId: string,
+    eventType: string
+  ): Promise<void> {
+    if (!liveStreamId) {
+      this.logger.warn?.(
+        `${eventType} event received but no live_stream_id found in webhook data`
+      );
+      return;
+    }
+
+    try {
+      const response = await this.mux.video.liveStreams.retrieve(liveStreamId);
+      const liveStream = (response as any).data ?? (response as any);
+      await this.upsertLiveStreams([liveStream]);
+    } catch (error) {
+      this.logger.warn?.(
+        `${eventType} event received but live stream ${liveStreamId} not found (likely deleted): ${error}`
+      );
+      return;
+    }
+  }
+
+  private async handleLiveStreamSimulcastTargetEvent(
+    simulcastTargetData: any
+  ): Promise<void> {
+    const liveStreamId = simulcastTargetData?.live_stream_id;
+    await this.handleLiveStreamUpdateEvent(liveStreamId, 'simulcast_target');
   }
 
   private async handleAssetStaticRenditionEvent(
