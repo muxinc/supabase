@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS http;
 -- Create the cron job
 SELECT cron.schedule(
   'process-queue-cron',
-  '*/10 * * * * *', -- Every 10s
+  '10 seconds', -- Every 10s
   $$
   SELECT net.http_post(
     url := 'https://vbesqjhrrcornlyccxow.supabase.co/functions/v1/process-queue-cron',
