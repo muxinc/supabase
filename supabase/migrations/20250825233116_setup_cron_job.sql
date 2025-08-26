@@ -9,7 +9,7 @@ SELECT cron.schedule(
   '*/10 * * * * *', -- Every 10s
   $$
   SELECT net.http_post(
-    url := 'https://3ee2a5a047b2.ngrok-free.app/functions/v1/process-queue-cron',
+    url := 'https://vbesqjhrrcornlyccxow.supabase.co/functions/v1/process-queue-cron',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer '
