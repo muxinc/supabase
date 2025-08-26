@@ -1,0 +1,43 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/collections@^1.1.3": "1.1.3",
+    "jsr:@std/toml@*": "1.0.9",
+    "jsr:@supabase/functions-js@*": "2.4.5"
+  },
+  "jsr": {
+    "@std/collections@1.1.3": {
+      "integrity": "bf8b0818886df6a32b64c7d3b037a425111f28278d69fd0995aeb62777c986b0"
+    },
+    "@std/toml@1.0.9": {
+      "integrity": "1629147c2edbffd71be6ab66cf90d3b27e59ca314067e58649e0626979383b83",
+      "dependencies": [
+        "jsr:@std/collections"
+      ]
+    },
+    "@supabase/functions-js@2.4.5": {
+      "integrity": "ead2df253fe0c3b0b682c5f25076978ab62c10afff4d04222451a90ba512c394"
+    }
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@mux/mux-node@^12.1.0",
+        "npm:@supabase/supabase-js@^2.45.4",
+        "npm:@types/node@20",
+        "npm:@typescript-eslint/eslint-plugin@^8.36.0",
+        "npm:@typescript-eslint/parser@^8.36.0",
+        "npm:dotenv@^17.1.0",
+        "npm:eslint-config-prettier@^10.1.5",
+        "npm:eslint-plugin-prettier@^5.5.1",
+        "npm:eslint@^9.30.1",
+        "npm:prettier@^3.6.2",
+        "npm:rimraf@^6.0.1",
+        "npm:supabase@^2.30.4",
+        "npm:ts-node@^10.9.0",
+        "npm:tsup@^8.5.0",
+        "npm:typescript@^5.8.3"
+      ]
+    }
+  }
+}

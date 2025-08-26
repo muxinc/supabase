@@ -3,6 +3,7 @@ import Mux from 'npm:@mux/mux-node@12';
 import type { UnwrapWebhookEvent } from 'npm:@mux/mux-node@12';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { parse as parseToml } from 'jsr:@std/toml';
+import { writeWorkflowMessage } from './write-to-queue.ts';
 
 const mux = new Mux();
 
@@ -86,18 +87,9 @@ async function invokeMuxFunction(
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: _data, error } = await supabase.functions.invoke(
-      functionName,
-      {
-        body: event,
-      }
-    );
+    await writeWorkflowMessage(functionName, event);
 
-    if (error) {
-      console.error(`Failed to invoke function ${functionName}:`, error);
-    } else {
-      console.log(`Successfully invoked function: ${functionName}`);
-    }
+    console.log('Wrote workflow message:', functionName);
   } catch (error) {
     console.error(`Error invoking function ${functionName}:`, error);
   }
