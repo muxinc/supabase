@@ -18,7 +18,7 @@ export default defineConfig({
   banner: {
     js: '#!/usr/bin/env node',
   },
-  noExternal: [],
+  noExternal: [/.*/],
   esbuildOptions(options) {
     options.define = {
       ...options.define,

@@ -7,24 +7,51 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_SCHEMA = 'mux';
 
-// Helper function to get __dirname that works in both ESM and CommonJS
-function getDirname(): string {
+function getMigrationsPath(): string {
   try {
+    const packageJsonPath = require.resolve(
+      '@r-delfino/mux-sync-engine/package.json'
+    );
+    const packageDir = path.dirname(packageJsonPath);
+
+    // Check if migrations exist in dist/migrations (compiled package)
+    const distMigrationsPath = path.join(packageDir, 'dist', 'migrations');
+    if (fs.existsSync(distMigrationsPath)) {
+      return distMigrationsPath;
+    }
+
+    // Check if migrations exist in src/database/migrations (source)
+    const srcMigrationsPath = path.join(
+      packageDir,
+      'src',
+      'database',
+      'migrations'
+    );
+    if (fs.existsSync(srcMigrationsPath)) {
+      return srcMigrationsPath;
+    }
+
+    // Fallback: try to use __dirname approach
+    let baseDir: string;
     if (typeof import.meta !== 'undefined' && import.meta.url) {
       const __filename = fileURLToPath(import.meta.url);
-      return path.dirname(__filename);
+      baseDir = path.dirname(__filename);
+    } else {
+      // @ts-ignore - __dirname is available in CommonJS context
+      baseDir = __dirname;
     }
-  } catch {
-    // Fallback for cases where import.meta.url is not available
-  }
 
-  // Fallback for CommonJS context
-  try {
-    // @ts-ignore - __dirname is available in CommonJS context
-    return __dirname;
-  } catch {
-    // If neither works, use a relative path from the current working directory
-    return path.join(process.cwd(), 'packages/sync-engine/src/database');
+    // Try migrations relative to current file
+    const relativeMigrationsPath = path.resolve(baseDir, 'migrations');
+    if (fs.existsSync(relativeMigrationsPath)) {
+      return relativeMigrationsPath;
+    }
+
+    throw new Error('Could not find migrations directory');
+  } catch (error) {
+    throw new Error(
+      `Failed to locate migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -80,11 +107,11 @@ export async function runMigrations(config: MigrationConfig): Promise<void> {
 
     logger.info('Running migrations');
 
-    await connectAndMigrate(
-      client,
-      path.resolve(getDirname(), './migrations'),
-      logger
-    );
+    // Find the migrations directory
+    const migrationsPath = getMigrationsPath();
+    logger.info(`Looking for migrations in: ${migrationsPath}`);
+
+    await connectAndMigrate(client, migrationsPath, logger);
   } catch (err) {
     logger.error(err as Error, 'Error running migrations');
   } finally {

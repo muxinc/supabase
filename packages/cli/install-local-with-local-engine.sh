@@ -78,6 +78,10 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
 "
 echo "✅ Package.json modified"
 
+# Install dependencies with the modified package.json
+echo "📦 Installing dependencies..."
+npm install
+
 # Build the CLI
 echo "🔨 Building the CLI..."
 npm run build

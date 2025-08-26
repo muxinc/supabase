@@ -3,6 +3,8 @@ import { PostgresClient } from './database/postgres';
 import { muxAssetsSchema } from './schemas/mux_assets';
 import { muxLiveStreamsSchema } from './schemas/mux_live_streams';
 import { muxUploadsSchema } from './schemas/mux_uploads';
+import { muxWebhookEventsSchema } from './schemas/mux_webhook_events';
+import { muxWebhookEventPayloadsSchema } from './schemas/mux_webhook_event_payloads';
 import {
   MuxSyncConfig,
   Sync,
@@ -39,6 +41,9 @@ export class MuxSync {
   async processWebhook(payload: string, headers: HeadersLike) {
     const event = this.mux.webhooks.unwrap(payload, headers);
     this.logger.info(`Received webhook ${event.id}: ${event.type}`);
+
+    // Store the webhook event and payload
+    await this.upsertWebhookEvent(event, headers);
 
     const eventType = event.type as string;
 
@@ -151,7 +156,7 @@ export class MuxSync {
         case 'video.asset.static_rendition.errored':
         case 'video.asset.static_rendition.skipped':
         case 'video.asset.static_rendition.deleted': {
-          const staticRendition = event.data as any;
+          const staticRendition = event.data;
           await this.handleAssetStaticRenditionEvent(staticRendition);
           break;
         }
@@ -164,7 +169,7 @@ export class MuxSync {
         case 'video.live_stream.simulcast_target.errored':
         case 'video.live_stream.simulcast_target.deleted':
         case 'video.live_stream.simulcast_target.updated': {
-          const simulcastTargetData = event.data as any;
+          const simulcastTargetData = event.data;
           await this.handleLiveStreamSimulcastTargetEvent(simulcastTargetData);
           break;
         }
@@ -516,5 +521,44 @@ export class MuxSync {
       'mux_live_stream_id',
       muxLiveStreamId
     );
+  }
+
+  private async upsertWebhookEvent(
+    event: Mux.Webhooks.UnwrapWebhookEvent,
+    headers: HeadersLike
+  ): Promise<void> {
+    const transformedEvent = {
+      ...event,
+      created_at: new Date(event.created_at).toISOString(),
+      attempts: event.attempts || [],
+      environment: event.environment || {},
+      object: event.object || {},
+    };
+
+    const transformedPayload = {
+      webhook_event_id: event.id,
+      raw_body: event.data,
+      headers,
+    };
+
+    try {
+      await this.postgresClient.upsertMany(
+        [transformedEvent],
+        'webhook_events',
+        muxWebhookEventsSchema,
+        { conflict: 'id' }
+      );
+      await this.postgresClient.upsertMany(
+        [transformedPayload],
+        'webhook_event_payloads',
+        muxWebhookEventPayloadsSchema,
+        { conflict: 'webhook_event_id' }
+      );
+
+      this.logger.info(`Stored webhook event ${event.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to store webhook event ${event.id}:`, error);
+      throw error;
+    }
   }
 }
