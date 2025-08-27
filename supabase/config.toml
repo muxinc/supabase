@@ -42,8 +42,9 @@ default_pool_size = 20
 # Maximum number of client connections allowed.
 max_client_conn = 100
 
-# [db.vault]
-# secret_key = "env(SECRET_VALUE)"
+[db.vault]
+secret_key = "env(SUPABASE_SERVICE_KEY)"
+supabase_url = "env(SUPABASE_URL)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.
