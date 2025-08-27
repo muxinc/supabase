@@ -1,31 +1,17 @@
 -- Optimization 1: Composite Indexes for status + date queries
 -- These are very common query patterns in sync engines
--- Note: Using regular CREATE INDEX for migration compatibility
--- In production, these can be recreated with CONCURRENTLY if needed
 
 -- Assets: Status + created_at (for filtering by status and date range)
 CREATE INDEX IF NOT EXISTS idx_mux_assets_status_created_at 
 ON "mux"."assets"(status, created_at);
 
--- Assets: Status + updated_at (for finding recently updated assets by status)
-CREATE INDEX IF NOT EXISTS idx_mux_assets_status_updated_at 
-ON "mux"."assets"(status, updated_at);
-
 -- Live Streams: Status + created_at
 CREATE INDEX IF NOT EXISTS idx_mux_live_streams_status_created_at 
 ON "mux"."live_streams"(status, created_at);
 
--- Live Streams: Status + updated_at
-CREATE INDEX IF NOT EXISTS idx_mux_live_streams_status_updated_at 
-ON "mux"."live_streams"(status, updated_at);
-
--- Uploads: Status + created_at
-CREATE INDEX IF NOT EXISTS idx_mux_uploads_status_created_at 
-ON "mux"."uploads"(status, created_at);
-
--- Uploads: Status + updated_at
-CREATE INDEX IF NOT EXISTS idx_mux_uploads_status_updated_at 
-ON "mux"."uploads"(status, updated_at);
+-- Only status-based index is needed for uploads
+CREATE INDEX IF NOT EXISTS idx_mux_uploads_status 
+ON "mux"."uploads"(status);
 
 
 -- Optimization 2: GIN Indexes for JSONB fields
@@ -91,24 +77,6 @@ CREATE INDEX IF NOT EXISTS idx_mux_live_streams_active
 ON "mux"."live_streams"(created_at, active_asset_id) 
 WHERE status IN ('active', 'idle');
 
--- Non-test data (production data filtering)
-CREATE INDEX IF NOT EXISTS idx_mux_assets_production 
-ON "mux"."assets"(status, created_at) 
-WHERE test = false;
-
-CREATE INDEX IF NOT EXISTS idx_mux_live_streams_production 
-ON "mux"."live_streams"(status, created_at) 
-WHERE test = false;
-
-CREATE INDEX IF NOT EXISTS idx_mux_uploads_production 
-ON "mux"."uploads"(status, created_at) 
-WHERE test = false;
-
--- Recent uploads (for monitoring recent activity)
--- Note: Removing time-based index predicate since NOW() is not immutable
--- This index covers all uploads by status and created_at for recent activity queries
-CREATE INDEX IF NOT EXISTS idx_mux_uploads_recent 
-ON "mux"."uploads"(status, created_at);
 
 -- Assets by ingest type (useful for analytics)
 CREATE INDEX IF NOT EXISTS idx_mux_assets_by_ingest_type 

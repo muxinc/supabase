@@ -2,10 +2,10 @@ import type { EntitySchema } from './types';
 
 export const muxAssetsSchema: EntitySchema = {
   properties: [
-    'mux_asset_id',
+    'id',
     'status',
     'created_at',
-    'duration',
+    'duration_seconds',
     'max_stored_frame_rate',
     'aspect_ratio',
     'playback_ids',

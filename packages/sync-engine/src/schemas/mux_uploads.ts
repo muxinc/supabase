@@ -2,9 +2,9 @@ import type { EntitySchema } from './types';
 
 export const muxUploadsSchema: EntitySchema = {
   properties: [
-    'mux_upload_id',
+    'id',
     'status',
-    'timeout',
+    'timeout_seconds',
     'asset_id',
     'cors_origin',
     'url',

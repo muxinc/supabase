@@ -236,7 +236,7 @@ export class MuxSync {
   private async upsertAssets(assets: Mux.Video.Assets.Asset[]): Promise<any[]> {
     const transformedAssets = assets.map((asset: any) => ({
       ...asset,
-      mux_asset_id: asset.id,
+      duration_seconds: asset.duration,
       created_at: asset.created_at
         ? new Date(Number(asset.created_at) * 1000).toISOString()
         : null,
@@ -246,7 +246,7 @@ export class MuxSync {
       transformedAssets,
       'assets',
       muxAssetsSchema,
-      { conflict: 'mux_asset_id' }
+      { conflict: 'id' }
     );
   }
 
@@ -296,7 +296,32 @@ export class MuxSync {
     return { synced: totalSynced };
   }
 
-  async syncMuxAssets(): Promise<Sync> {
+  async syncMuxAssets(assetIds?: string[]): Promise<Sync> {
+    if (assetIds?.length) {
+      const result: Sync = { synced: 0 };
+      const missing = await this.postgresClient.findMissingEntries(
+        'id',
+        'assets',
+        assetIds
+      );
+      if (missing.length) {
+        const fetchedAssets: Mux.Video.Assets.Asset[] = [];
+        for (const id of missing) {
+          try {
+            const asset = await this.mux.video.assets.retrieve(id);
+            fetchedAssets.push(asset);
+          } catch {
+            this.logger.warn?.(`Failed fetching asset ${id}`);
+          }
+        }
+        if (fetchedAssets.length) {
+          const rows = await this.upsertAssets(fetchedAssets);
+          result.synced = rows.length;
+        }
+      }
+      return result;
+    }
+
     return this.genericSync<Mux.Video.Assets.Asset>(
       'assets',
       (params) => this.mux.video.assets.list(params),
@@ -304,27 +329,77 @@ export class MuxSync {
     );
   }
 
+  private async upsertEntitiesWithRelatedAssets<T extends Record<string, any>>(
+    entities: T[],
+    tableName: string,
+    schema: any,
+    config: {
+      assetIds?: string[];
+      transformEntity: (entity: T) => any;
+    }
+  ): Promise<any[]> {
+    if (this.config.backfillRelatedEntities && config.assetIds?.length) {
+      await this.syncMuxAssets(config.assetIds);
+    }
+
+    const transformedEntities = entities.map(config.transformEntity);
+
+    return this.postgresClient.upsertMany(
+      transformedEntities,
+      tableName,
+      schema,
+      {
+        conflict: 'id',
+      }
+    );
+  }
+
   private async upsertLiveStreams(
     liveStreams: Mux.Video.LiveStreams.LiveStream[]
   ): Promise<any[]> {
-    return this.upsertWithAssetValidation(liveStreams, {
-      assetIdField: 'active_asset_id',
-      entityName: 'Live streams',
-      transformFn: (ls: any, missingAssetIds: string[]) => ({
-        ...ls,
-        mux_live_stream_id: ls.id,
-        active_asset_id: missingAssetIds.includes(ls.active_asset_id)
-          ? null
-          : ls.active_asset_id,
-        created_at: ls.created_at
-          ? new Date(Number(ls.created_at) * 1000).toISOString()
-          : new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-      tableName: 'live_streams',
-      schema: muxLiveStreamsSchema,
-      conflictField: 'mux_live_stream_id',
-    });
+    // Extract asset IDs for backfill
+    const assetIds = liveStreams
+      .filter((ls) => ls.active_asset_id != null)
+      .map((ls) => ls.active_asset_id!);
+
+    return this.upsertEntitiesWithRelatedAssets(
+      liveStreams,
+      'live_streams',
+      muxLiveStreamsSchema,
+      {
+        assetIds,
+        transformEntity: (ls: Mux.Video.LiveStreams.LiveStream) => ({
+          ...ls,
+          created_at: ls.created_at
+            ? new Date(Number(ls.created_at) * 1000).toISOString()
+            : null,
+          max_continuous_duration_seconds: ls.max_continuous_duration,
+          reconnect_window_seconds: ls.reconnect_window,
+        }),
+      }
+    );
+  }
+
+  private async upsertUploads(
+    uploads: Mux.Video.Uploads.Upload[]
+  ): Promise<any[]> {
+    // Extract asset IDs for backfill
+    const assetIds = uploads
+      .filter((u) => u.asset_id != null)
+      .map((u) => u.asset_id!);
+
+    return this.upsertEntitiesWithRelatedAssets(
+      uploads,
+      'uploads',
+      muxUploadsSchema,
+      {
+        assetIds,
+        transformEntity: (u: Mux.Video.Uploads.Upload) => ({
+          ...u,
+          timeout_seconds: u.timeout,
+        }),
+      }
+    );
   }
 
   private async syncMuxLiveStreams(): Promise<Sync> {
@@ -410,115 +485,14 @@ export class MuxSync {
     await this.handleAssetUpdateEvent(assetId, 'static_rendition');
   }
 
-  private async upsertWithAssetValidation<T extends Record<string, any>>(
-    items: T[],
-    config: {
-      assetIdField: string;
-      entityName: string;
-      transformFn: (item: T, missingAssetIds: string[]) => any;
-      tableName: string;
-      schema: any;
-      conflictField: string;
-    }
-  ): Promise<any[]> {
-    // Validate FK to assets: ensure referenced asset rows exist or nullify to avoid FK violation
-    const assetIds = Array.from(
-      new Set(
-        items
-          .map((item: any) => item[config.assetIdField])
-          .filter(
-            (it: unknown): it is string =>
-              typeof it === 'string' && it.length > 0
-          )
-      )
-    );
-
-    let missing: string[] = [];
-    if (assetIds.length) {
-      missing = await this.postgresClient.findMissingEntries(
-        'mux_asset_id',
-        'assets',
-        assetIds
-      );
-
-      if (missing.length) {
-        // Try to fetch and upsert the missing assets from Mux API
-        const fetchedAssets: Mux.Video.Assets.Asset[] = [];
-        for (const id of missing) {
-          try {
-            const response = await this.mux.video.assets.retrieve(id);
-            const asset = (response as any).data ?? (response as any);
-            fetchedAssets.push(asset);
-          } catch {
-            this.logger.warn?.(
-              `Failed fetching asset ${id} referenced by ${config.entityName}`
-            );
-          }
-        }
-        if (fetchedAssets.length) {
-          await this.upsertAssets(fetchedAssets);
-        }
-
-        // Recompute missing after attempted backfill
-        missing = await this.postgresClient.findMissingEntries(
-          'mux_asset_id',
-          'assets',
-          assetIds
-        );
-      }
-    }
-
-    if (missing.length) {
-      this.logger.warn?.(
-        `${config.entityName} reference missing assets; nullifying ${config.assetIdField} for: ${missing.join(', ')}`
-      );
-    }
-
-    const transformed = items.map((item: T) =>
-      config.transformFn(item, missing)
-    );
-
-    return this.postgresClient.upsertMany(
-      transformed,
-      config.tableName,
-      config.schema,
-      {
-        conflict: config.conflictField,
-      }
-    );
-  }
-
-  private async upsertUploads(
-    uploads: Mux.Video.Uploads.Upload[]
-  ): Promise<any[]> {
-    return this.upsertWithAssetValidation(uploads, {
-      assetIdField: 'asset_id',
-      entityName: 'Uploads',
-      transformFn: (upload: any, missingAssetIds: string[]) => ({
-        ...upload,
-        mux_upload_id: upload.id,
-        asset_id: missingAssetIds.includes(upload.asset_id)
-          ? null
-          : upload.asset_id,
-      }),
-      tableName: 'uploads',
-      schema: muxUploadsSchema,
-      conflictField: 'mux_upload_id',
-    });
-  }
-
   private async deleteAsset(muxAssetId: string): Promise<boolean> {
-    return await this.postgresClient.deleteByField(
-      'assets',
-      'mux_asset_id',
-      muxAssetId
-    );
+    return await this.postgresClient.deleteByField('assets', 'id', muxAssetId);
   }
 
   private async deleteLiveStream(muxLiveStreamId: string): Promise<boolean> {
     return await this.postgresClient.deleteByField(
       'live_streams',
-      'mux_live_stream_id',
+      'id',
       muxLiveStreamId
     );
   }
@@ -529,7 +503,7 @@ export class MuxSync {
   ): Promise<void> {
     const transformedEvent = {
       ...event,
-      created_at: new Date(event.created_at).toISOString(),
+      created_at: event.created_at,
       attempts: event.attempts || [],
       environment: event.environment || {},
       object: event.object || {},

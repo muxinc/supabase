@@ -2,12 +2,10 @@
 -- Contains video assets with their metadata and processing status
 
 create table if not exists "mux"."assets" (
-    id uuid primary key default gen_random_uuid(),
-    mux_asset_id text unique not null,
-    status text not null,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    duration decimal,
+    id text primary key,
+    status text,
+    created_at timestamp with time zone,
+    duration_seconds decimal,
     max_stored_frame_rate decimal,
     aspect_ratio text,
     playback_ids jsonb default '[]'::jsonb,
@@ -31,7 +29,5 @@ create table if not exists "mux"."assets" (
     progress jsonb default '{}'::jsonb,
     meta jsonb default '{}'::jsonb,
     max_resolution_tier text,
-    recording_times jsonb default '[]'::jsonb,
-    created_by uuid references auth.users(id) on delete set null,
-    updated_by uuid references auth.users(id) on delete set null
+    recording_times jsonb default '[]'::jsonb
 );

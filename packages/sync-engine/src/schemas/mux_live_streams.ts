@@ -2,10 +2,9 @@ import type { EntitySchema } from './types';
 
 export const muxLiveStreamsSchema: EntitySchema = {
   properties: [
-    'mux_live_stream_id',
+    'id',
     'status',
     'created_at',
-    'updated_at',
     'stream_key',
     'active_asset_id',
     'recent_asset_ids',
@@ -17,11 +16,10 @@ export const muxLiveStreamsSchema: EntitySchema = {
     'generated_subtitles',
     'latency_mode',
     'test',
-    'max_continuous_duration',
-    'reconnect_window',
+    'max_continuous_duration_seconds',
+    'reconnect_window_seconds',
     'use_slate_for_standard_latency',
     'reconnect_slate_url',
-    'target_latency',
     'active_ingest_protocol',
     'meta',
     'simulcast_targets',
