@@ -1,6 +1,6 @@
 {
   "name": "@r-delfino/mux-sync-supabase",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
@@ -51,7 +51,7 @@
     "dist/index.cjs"
   ],
   "dependencies": {
-    "@r-delfino/mux-sync-engine": "^0.0.11",
+    "@r-delfino/mux-sync-engine": "^0.0.12",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",
     "inquirer": "^9.2.15",
