@@ -22,12 +22,12 @@ Deno.serve(async (req) => {
     });
 
   if (error) {
-    console.error('Error reading from test_test queue:', error);
+    console.error('Error reading from workflow_messages queue:', error);
     return;
   }
 
   if (!messages || messages.length === 0) {
-    console.log('No messages in test_test queue');
+    console.log('No messages in workflow_messages queue');
     return;
   }
 
