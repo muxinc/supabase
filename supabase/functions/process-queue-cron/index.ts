@@ -31,5 +31,5 @@ Deno.serve(async (req) => {
     return;
   }
 
-  console.log(message);
+  console.log(messages);
 });
