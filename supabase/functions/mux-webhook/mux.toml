@@ -1,2 +1,2 @@
 [workflows.content-moderation]
-events = ["video.asset.ready", "video.asset.created"]
+events = ["video.asset.ready"]

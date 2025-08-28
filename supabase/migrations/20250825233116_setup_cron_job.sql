@@ -15,5 +15,6 @@ SELECT cron.schedule(
     ),
     body := jsonb_build_object('triggered_by', 'cron')
   );
+  select * from net._http_response;
   $$
 );
