@@ -6,9 +6,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+// Single service client for both database operations and function invocations
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 // Type definition for queue messages
@@ -76,29 +77,29 @@ async function processMessageWithCleanup(
 }
 
 /**
- * Example processor function - replace with actual workflow invocation
+ * Invoke the actual workflow function via Supabase
  */
 async function processWorkflowMessage(payload: any): Promise<void> {
-  // For now, just log the message as requested
-  console.log('Processing workflow message:', JSON.stringify(payload, null, 2));
+  const { workflow_name, event } = payload;
   
-  // TODO: In production, this would invoke the actual workflow function
-  // Example:
-  // const response = await fetch(`${SUPABASE_URL}/functions/v1/${payload.workflow_name}`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-  //     'Content-Type': 'application/json'
-  //   },
-  //   body: JSON.stringify(payload.event)
-  // });
-  // 
-  // if (!response.ok) {
-  //   throw new Error(`Workflow ${payload.workflow_name} failed: ${response.status}`);
-  // }
+  console.log(`Invoking workflow: ${workflow_name}`, JSON.stringify(event, null, 2));
   
-  // Simulate some processing time
-  await new Promise(resolve => setTimeout(resolve, 100));
+  try {
+    // Use Supabase service client to invoke the Edge Function
+    // supabase-js will attach Authorization: Bearer <service_key> for invoke
+    const { data, error } = await supabase.functions.invoke(workflow_name, {
+      body: event
+    });
+    
+    if (error) {
+      throw new Error(`Workflow ${workflow_name} failed: ${error.message}`);
+    }
+    
+    console.log(`Workflow ${workflow_name} completed successfully:`, data);
+  } catch (error) {
+    console.error(`Failed to invoke workflow ${workflow_name}:`, error);
+    throw error; // Re-throw to prevent message deletion
+  }
 }
 
 Deno.serve(async (req) => {
