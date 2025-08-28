@@ -1,6 +1,6 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS http;
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- Create the cron job
 SELECT cron.schedule(
