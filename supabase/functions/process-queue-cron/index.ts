@@ -35,25 +35,29 @@ async function processMessageWithCleanup(
 ): Promise<void> {
   const msgId = message.msg_id;
   const payload = message.message;
-  
-  console.log(`Processing message ${msgId} for workflow: ${payload.workflow_name}`);
-  
+
+  console.log(
+    `Processing message ${msgId} read_ct=${message.read_ct} for workflow: ${payload.workflow_name}`
+  );
+
   // Create the background task that processes and cleans up
   const backgroundTask = async () => {
     try {
       // Call the processor function
       await processor(payload);
-      
-      console.log(`Successfully processed message ${msgId}, deleting from queue`);
-      
+
+      console.log(
+        `Successfully processed message ${msgId}, deleting from queue`
+      );
+
       // Delete the message from the queue on success
       const { error: deleteError } = await supabase
         .schema('pgmq_public')
         .rpc('delete', {
           queue_name: 'workflow_messages',
-          msg_id: msgId
+          msg_id: msgId,
         });
-      
+
       if (deleteError) {
         console.error(`Failed to delete message ${msgId}:`, deleteError);
       } else {
@@ -64,7 +68,7 @@ async function processMessageWithCleanup(
       // Message stays in queue for retry since we don't delete on error
     }
   };
-  
+
   // Use EdgeRuntime.waitUntil to process in background
   // This ensures the response can be sent immediately while processing continues
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
@@ -81,20 +85,23 @@ async function processMessageWithCleanup(
  */
 async function processWorkflowMessage(payload: any): Promise<void> {
   const { workflow_name, event } = payload;
-  
-  console.log(`Invoking workflow: ${workflow_name}`, JSON.stringify(event, null, 2));
-  
+
+  console.log(
+    `Invoking workflow: ${workflow_name}`,
+    JSON.stringify(event, null, 2)
+  );
+
   try {
     // Use Supabase service client to invoke the Edge Function
     // supabase-js will attach Authorization: Bearer <service_key> for invoke
     const { data, error } = await supabase.functions.invoke(workflow_name, {
-      body: event
+      body: event,
     });
-    
+
     if (error) {
       throw new Error(`Workflow ${workflow_name} failed: ${error.message}`);
     }
-    
+
     console.log(`Workflow ${workflow_name} completed successfully:`, data);
   } catch (error) {
     console.error(`Failed to invoke workflow ${workflow_name}:`, error);
@@ -115,42 +122,39 @@ Deno.serve(async (req) => {
 
   if (error) {
     console.error('Error reading from workflow_messages queue:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   if (!messages || messages.length === 0) {
     console.log('No messages in workflow_messages queue');
-    return new Response(
-      JSON.stringify({ message: 'No messages in queue' }),
-      { 
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response(JSON.stringify({ message: 'No messages in queue' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   console.log(`Found ${messages.length} messages to process`);
-  
+
   // Process each message with the wrapper function
   for (const message of messages) {
-    await processMessageWithCleanup(message as QueueMessage, processWorkflowMessage);
+    await processMessageWithCleanup(
+      message as QueueMessage,
+      processWorkflowMessage
+    );
   }
-  
+
   // Return immediately while background processing continues
   return new Response(
-    JSON.stringify({ 
+    JSON.stringify({
       message: `Processing ${messages.length} messages in background`,
-      count: messages.length 
+      count: messages.length,
     }),
-    { 
+    {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     }
   );
 });

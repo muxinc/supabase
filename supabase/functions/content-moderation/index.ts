@@ -3,23 +3,28 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 
-import { writeWorkflowOutput } from '../../../lib/workflow-output.ts'
-import OpenAI from "openai";
+import OpenAI from 'openai';
 
-const deliveryDomain = "mux.com"; // replace this with a custom delivery domain if that's what you're using
+const deliveryDomain = 'mux.com'; // replace this with a custom delivery domain if that's what you're using
 
 const openaiClient = new OpenAI({
-  apiKey: Deno.env.get('OPENAI_API_KEY')
+  apiKey: Deno.env.get('OPENAI_API_KEY'),
 });
 
 export function getImageBaseUrl() {
   return `https://image.${deliveryDomain}`;
 }
 
-export function getThumbnailUrls({ playbackId, duration }: { playbackId: string; duration: number }): string[] {
+export function getThumbnailUrls({
+  playbackId,
+  duration,
+}: {
+  playbackId: string;
+  duration: number;
+}): string[] {
   const timestamps: number[] = [];
 
   if (duration <= 50) {
@@ -42,17 +47,16 @@ export function getThumbnailUrls({ playbackId, duration }: { playbackId: string;
   return urls;
 }
 
-
 async function requestModeration(imageUrls: string[]) {
   const moderationPromises = imageUrls.map(async (url) => {
     console.log(`Moderating image: ${url}`);
 
     try {
       const moderation = await openaiClient.moderations.create({
-        model: "omni-moderation-latest",
+        model: 'omni-moderation-latest',
         input: [
           {
-            type: "image_url",
+            type: 'image_url',
             image_url: {
               url: url,
             },
@@ -63,8 +67,10 @@ async function requestModeration(imageUrls: string[]) {
       const categoryScores = moderation.results[0].category_scores;
 
       if (moderation.results[0].flagged) {
-        console.warn("Image flagged for moderation.");
-        console.log(`Sexual: ${categoryScores.sexual}, Violence: ${categoryScores.violence}`);
+        console.warn('Image flagged for moderation.');
+        console.log(
+          `Sexual: ${categoryScores.sexual}, Violence: ${categoryScores.violence}`
+        );
       }
 
       return {
@@ -72,11 +78,10 @@ async function requestModeration(imageUrls: string[]) {
         adult: categoryScores.sexual || 0,
         violence: categoryScores.violence || 0,
         suggestive: null,
-        error: false
+        error: false,
       };
-
     } catch (error) {
-      console.error("Failed to moderate image:", error);
+      console.error('Failed to moderate image:', error);
 
       return {
         url,
@@ -94,46 +99,43 @@ async function requestModeration(imageUrls: string[]) {
 
 Deno.serve(async (req) => {
   const start = new Date();
-  const event = (await req.json() as UnwrapWebhookEvent);
-  const asset = event.data
+  const event = (await req.json()) as UnwrapWebhookEvent;
+  const asset = event.data;
   if (!asset) {
     console.log('No asset');
     return new Response('No asset provided', { status: 400 });
   }
-  const duration = asset.duration
+  const duration = asset.duration;
   if (!duration) {
     console.log('No duration');
     return new Response('No duration provided', { status: 400 });
   }
-  const playbackId = asset.playback_ids && asset.playback_ids[0] && asset.playback_ids[0].id;
+  const playbackId =
+    asset.playback_ids && asset.playback_ids[0] && asset.playback_ids[0].id;
   if (!playbackId) {
     console.log('No playbackId');
     return new Response('No playbackId provided', { status: 400 });
   }
-  const imageUrls = getThumbnailUrls({playbackId: playbackId, duration: duration });
+  const imageUrls = getThumbnailUrls({
+    playbackId: playbackId,
+    duration: duration,
+  });
   const resp = await requestModeration(imageUrls);
   const complete = new Date();
   try {
-    await writeWorkflowOutput({
-      slug: 'content-moderation',
-      version: '1',
-      started_at: start,
-      completed_at: complete,
-      mux_asset_id: asset.id,
-      output_data: resp
-    });
+    console.log('Completed content moderation', resp);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in content moderation function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
   }
-})
+});
 
 /* To invoke locally:
 
