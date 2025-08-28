@@ -87,15 +87,15 @@ You can backfill existing Mux data to your database:
 
 ```typescript
 // Backfill all data
-const result = await muxSync.backfill({ object: 'all' });
+const result = await muxSync.syncBackfill({ object: 'all' });
 console.log(`Synced ${result.muxAssets?.synced} assets`);
 console.log(`Synced ${result.muxLiveStreams?.synced} live streams`);
 console.log(`Synced ${result.muxUploads?.synced} uploads`);
 
 // Backfill specific object types
-await muxSync.backfill({ object: 'mux_assets' });
-await muxSync.backfill({ object: 'mux_live_streams' });
-await muxSync.backfill({ object: 'mux_uploads' });
+await muxSync.syncBackfill({ object: 'mux_assets' });
+await muxSync.syncBackfill({ object: 'mux_live_streams' });
+await muxSync.syncBackfill({ object: 'mux_uploads' });
 ```
 
 ## Database Schema

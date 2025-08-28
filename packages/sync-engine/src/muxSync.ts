@@ -296,7 +296,7 @@ export class MuxSync {
     return { synced: totalSynced };
   }
 
-  async syncMuxAssets(assetIds?: string[]): Promise<Sync> {
+  private async syncMuxAssets(assetIds?: string[]): Promise<Sync> {
     if (assetIds?.length) {
       const result: Sync = { synced: 0 };
       const missing = await this.postgresClient.findMissingEntries(

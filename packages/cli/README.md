@@ -75,9 +75,25 @@ After running the init command:
    - MUX_TOKEN_ID: Your Mux token ID  
    - MUX_TOKEN_SECRET: Your Mux token secret
    - MUX_WEBHOOK_SECRET: A secret key for webhook verification
-2. **Deploy the function**: `supabase functions deploy mux-webhook`
-3. **Configure Mux webhook** to point to your Supabase function URL
-4. **Test the integration** with a Mux event
+
+2. **Disable JWT verification for mux-webhook** (required for proper function):
+   
+   **Option A - Using config.toml**:
+   Add this to your `supabase/config.toml`:
+   ```toml
+   [functions.mux-webhook]
+   verify_jwt = false
+   ```
+   
+   **Option B - Using Supabase Dashboard** (function must be deployed first):
+   - Go to Dashboard > Edge Functions
+   - Select the `mux-webhook` function
+   - Go to the Details tab
+   - Disable "Verify JWT with legacy secret"
+
+3. **Deploy the function**: `supabase functions deploy mux-webhook`
+4. **Configure Mux webhook** to point to your Supabase function URL
+5. **Test the integration** with a Mux event
 
 ## Development
 
