@@ -18,18 +18,40 @@ Deno.serve(async (req) => {
     .schema('pgmq_public')
     .rpc('read', {
       queue_name: 'workflow_messages',
+      sleep_seconds: 30, 
       n: 1,
     });
 
   if (error) {
     console.error('Error reading from workflow_messages queue:', error);
-    return;
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 
   if (!messages || messages.length === 0) {
     console.log('No messages in workflow_messages queue');
-    return;
+    return new Response(
+      JSON.stringify({ message: 'No messages in queue' }),
+      { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 
   console.log(messages);
+  
+  // Return the messages as the response
+  return new Response(
+    JSON.stringify({ messages }),
+    { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
 });

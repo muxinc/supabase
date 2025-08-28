@@ -1,61 +1,39 @@
--- Expose pgmq functions to the public schema for RPC access
-
--- Create wrapper functions in public schema to expose pgmq functions
-CREATE OR REPLACE FUNCTION public.pgmq_read(
-  queue_name text,
-  visibility_timeout integer default 30,
-  qty integer default 1
-)
-RETURNS TABLE (
-  msg_id bigint,
-  read_ct integer,
-  enqueued_at timestamp with time zone,
-  vt timestamp with time zone,
-  message jsonb
-) 
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN QUERY SELECT * FROM pgmq.read(queue_name, visibility_timeout, qty);
-END;
+create or replace function pgmq_public.send(queue_name text, message jsonb)
+returns bigint
+language sql
+security definer
+as $$
+  select pgmq.send(queue_name => queue_name, msg => message);
 $$;
 
-CREATE OR REPLACE FUNCTION public.pgmq_pop(queue_name text)
-RETURNS TABLE (
-  msg_id bigint,
-  read_ct integer,
-  enqueued_at timestamp with time zone,
-  vt timestamp with time zone,
-  message jsonb
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN QUERY SELECT * FROM pgmq.pop(queue_name);
-END;
+create or replace function pgmq_public.read(queue_name text, sleep_seconds integer default 30, n integer default 1)
+returns setof pgmq.message_record
+language sql
+security definer
+as $$
+  select * from pgmq.read(queue_name => queue_name, vt => sleep_seconds, qty => n);
 $$;
 
-CREATE OR REPLACE FUNCTION public.pgmq_archive(
-  queue_name text,
-  msg_id bigint
-)
-RETURNS boolean
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN pgmq.archive(queue_name, msg_id);
-END;
+create or replace function pgmq_public.pop(queue_name text)
+returns setof pgmq.message_record
+language sql
+security definer
+as $$
+  select * from pgmq.pop(queue_name => queue_name);
 $$;
 
-CREATE OR REPLACE FUNCTION public.pgmq_send(
-  queue_name text,
-  message jsonb,
-  delay integer default 0
-)
-RETURNS bigint
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN pgmq.send(queue_name, message, delay);
-END;
+create or replace function pgmq_public.delete(queue_name text, msg_id bigint)
+returns boolean
+language sql
+security definer
+as $$
+  select pgmq.delete(queue_name => queue_name, msg_id => msg_id);
+$$;
+
+create or replace function pgmq_public.archive(queue_name text, msg_id bigint)
+returns boolean
+language sql
+security definer
+as $$
+  select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
 $$;
