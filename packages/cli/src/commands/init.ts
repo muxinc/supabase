@@ -67,7 +67,7 @@ async function shouldOverwriteMuxWebhook(
 function createFunctionsEnvFile(): void {
   const functionsEnvPath = path.join(supabaseDir, 'functions', '.env');
   if (!fs.existsSync(functionsEnvPath)) {
-    const envContent = `# Used to develop Edge Functions locally.\n# Configure the secrets required by the mux-webhook function.\nSUPABASE_DB_URL=postgresql://your-database-url\nMUX_TOKEN_ID=your-mux-token-id\nMUX_TOKEN_SECRET=your-mux-token-secret\nMUX_WEBHOOK_SECRET=your-mux-webhook-secret\n`;
+    const envContent = `# Used to develop Edge Functions locally.\n# Configure the secrets required by the mux-webhook function.\nMUX_TOKEN_ID=your-mux-token-id\nMUX_TOKEN_SECRET=your-mux-token-secret\nMUX_WEBHOOK_SECRET=your-mux-webhook-secret\n`;
     fs.writeFileSync(functionsEnvPath, envContent);
     console.log(chalk.green('✅ Created supabase/functions/.env'));
   } else {
