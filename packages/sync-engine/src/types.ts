@@ -54,3 +54,40 @@ export interface SyncBackfill {
 export interface SyncBackfillParams {
   object?: SyncObject;
 }
+
+// Types for Mux API list responses that wrap data
+export interface MuxListResponse<T> {
+  data: T[];
+  next_cursor?: string;
+}
+
+// Types for webhook event data structures
+export interface SimulcastTargetData {
+  live_stream_id?: string;
+  id?: string;
+  [key: string]: unknown;
+}
+
+export interface StaticRenditionData {
+  asset_id?: string;
+  id?: string;
+  [key: string]: unknown;
+}
+
+export interface TrackData extends Record<string, unknown> {
+  asset_id?: string;
+  id?: string;
+}
+
+// Transform function type
+export type TransformFunction<T, R = Record<string, unknown>> = (
+  entity: T
+) => R;
+
+// Generic upsert result
+export interface UpsertResult {
+  id: string;
+  [key: string]: unknown;
+}
+
+export type EntitySchema = import('./schemas/types').EntitySchema;

@@ -1,0 +1,71 @@
+name: Sync Engine Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/sync-engine/**'
+      - '.github/workflows/sync-engine-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/sync-engine/**'
+      - '.github/workflows/sync-engine-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: packages/sync-engine/package-lock.json
+
+    - name: Install dependencies
+      working-directory: packages/sync-engine
+      run: npm ci
+
+    - name: Build package
+      working-directory: packages/sync-engine
+      run: npm run build
+
+    - name: Run tests
+      working-directory: packages/sync-engine
+      run: npm test -- --run
+      env:
+        CI: true
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sync-engine-test-results
+        path: packages/sync-engine/test-results/
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: packages/sync-engine/package-lock.json
+
+    - name: Install dependencies
+      working-directory: packages/sync-engine
+      run: npm ci
+
+    - name: Run linter
+      working-directory: packages/sync-engine
+      run: npm run lint

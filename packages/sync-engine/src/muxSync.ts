@@ -11,6 +11,10 @@ import {
   SyncBackfill,
   SyncBackfillParams,
   Logger,
+  SimulcastTargetData,
+  StaticRenditionData,
+  TrackData,
+  EntitySchema,
 } from './types';
 import { HeadersLike } from '@mux/mux-node/core';
 
@@ -70,7 +74,10 @@ export class MuxSync {
               event.data as Mux.Video.Assets.Asset,
               async (id) => {
                 const response = await this.mux.video.assets.retrieve(id);
-                return (response as any).data ?? (response as any);
+                return (
+                  (response as { data?: Mux.Video.Assets.Asset }).data ??
+                  (response as Mux.Video.Assets.Asset)
+                );
               }
             );
           await this.upsertAssets([asset]);
@@ -98,7 +105,10 @@ export class MuxSync {
             event.data as Mux.Video.Uploads.Upload,
             async (id) => {
               const response = await this.mux.video.uploads.retrieve(id);
-              return (response as any).data ?? (response as any);
+              return (
+                (response as { data?: Mux.Video.Uploads.Upload }).data ??
+                (response as Mux.Video.Uploads.Upload)
+              );
             }
           );
           await this.upsertUploads([upload]);
@@ -130,7 +140,10 @@ export class MuxSync {
             event.data as Mux.Video.LiveStreams.LiveStream,
             async (id) => {
               const response = await this.mux.video.liveStreams.retrieve(id);
-              return (response as any).data ?? (response as any);
+              return (
+                (response as { data?: Mux.Video.LiveStreams.LiveStream })
+                  .data ?? (response as Mux.Video.LiveStreams.LiveStream)
+              );
             }
           );
           await this.upsertLiveStreams([liveStream]);
@@ -156,7 +169,7 @@ export class MuxSync {
         case 'video.asset.static_rendition.errored':
         case 'video.asset.static_rendition.skipped':
         case 'video.asset.static_rendition.deleted': {
-          const staticRendition = event.data;
+          const staticRendition = event.data as StaticRenditionData;
           await this.handleAssetStaticRenditionEvent(staticRendition);
           break;
         }
@@ -169,7 +182,7 @@ export class MuxSync {
         case 'video.live_stream.simulcast_target.errored':
         case 'video.live_stream.simulcast_target.deleted':
         case 'video.live_stream.simulcast_target.updated': {
-          const simulcastTargetData = event.data;
+          const simulcastTargetData = event.data as SimulcastTargetData;
           await this.handleLiveStreamSimulcastTargetEvent(simulcastTargetData);
           break;
         }
@@ -233,8 +246,10 @@ export class MuxSync {
     return entity;
   }
 
-  private async upsertAssets(assets: Mux.Video.Assets.Asset[]): Promise<any[]> {
-    const transformedAssets = assets.map((asset: any) => ({
+  private async upsertAssets(
+    assets: Mux.Video.Assets.Asset[]
+  ): Promise<unknown[]> {
+    const transformedAssets = assets.map((asset) => ({
       ...asset,
       duration_seconds: asset.duration,
       created_at: asset.created_at
@@ -252,8 +267,10 @@ export class MuxSync {
 
   private async genericSync<T>(
     resourceName: string,
-    listFn: (params: any) => Promise<any>,
-    upsertFn: (items: T[]) => Promise<any>
+    listFn: (
+      params: Record<string, unknown>
+    ) => Promise<{ data: T[]; next_cursor?: string }>,
+    upsertFn: (items: T[]) => Promise<unknown[]>
   ): Promise<Sync> {
     this.logger.info(`Starting Mux ${resourceName} sync...`);
 
@@ -269,7 +286,7 @@ export class MuxSync {
       if (nextCursor) listParams.cursor = nextCursor;
 
       const response = await listFn(listParams);
-      const items = ((response as any).data ?? []) as T[];
+      const items = response.data;
 
       if (items.length) {
         this.logger.info(
@@ -284,10 +301,7 @@ export class MuxSync {
         this.logger.info(`No ${resourceName} found on page ${pageCount}`);
       }
 
-      nextCursor =
-        (response as any).body?.next_cursor ??
-        (response as any).next_cursor ??
-        undefined;
+      nextCursor = response.next_cursor;
     } while (nextCursor);
 
     this.logger.info(
@@ -329,15 +343,18 @@ export class MuxSync {
     );
   }
 
-  private async upsertEntitiesWithRelatedAssets<T extends Record<string, any>>(
+  private async upsertEntitiesWithRelatedAssets<
+    T,
+    R extends Record<string, unknown> = Record<string, unknown>,
+  >(
     entities: T[],
     tableName: string,
-    schema: any,
+    schema: EntitySchema,
     config: {
       assetIds?: string[];
-      transformEntity: (entity: T) => any;
+      transformEntity: (entity: T) => R;
     }
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     if (this.config.backfillRelatedEntities && config.assetIds?.length) {
       await this.syncMuxAssets(config.assetIds);
     }
@@ -356,7 +373,7 @@ export class MuxSync {
 
   private async upsertLiveStreams(
     liveStreams: Mux.Video.LiveStreams.LiveStream[]
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     // Extract asset IDs for backfill
     const assetIds = liveStreams
       .filter((ls) => ls.active_asset_id != null)
@@ -382,7 +399,7 @@ export class MuxSync {
 
   private async upsertUploads(
     uploads: Mux.Video.Uploads.Upload[]
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     // Extract asset IDs for backfill
     const assetIds = uploads
       .filter((u) => u.asset_id != null)
@@ -419,7 +436,7 @@ export class MuxSync {
   }
 
   private async handleAssetUpdateEvent(
-    assetId: string,
+    assetId: string | undefined,
     eventType: string
   ): Promise<void> {
     if (!assetId) {
@@ -431,7 +448,9 @@ export class MuxSync {
 
     try {
       const response = await this.mux.video.assets.retrieve(assetId);
-      const asset = (response as any).data ?? (response as any);
+      const asset =
+        (response as { data?: Mux.Video.Assets.Asset }).data ??
+        (response as Mux.Video.Assets.Asset);
       await this.upsertAssets([asset]);
     } catch (error) {
       this.logger.warn?.(
@@ -444,12 +463,12 @@ export class MuxSync {
   private async handleAssetTrackEvent(
     track: Mux.Video.Assets.Track
   ): Promise<void> {
-    const assetId = (track as any).asset_id;
+    const assetId = (track as TrackData).asset_id;
     await this.handleAssetUpdateEvent(assetId, 'track');
   }
 
   private async handleLiveStreamUpdateEvent(
-    liveStreamId: string,
+    liveStreamId: string | undefined,
     eventType: string
   ): Promise<void> {
     if (!liveStreamId) {
@@ -461,7 +480,9 @@ export class MuxSync {
 
     try {
       const response = await this.mux.video.liveStreams.retrieve(liveStreamId);
-      const liveStream = (response as any).data ?? (response as any);
+      const liveStream =
+        (response as { data?: Mux.Video.LiveStreams.LiveStream }).data ??
+        (response as Mux.Video.LiveStreams.LiveStream);
       await this.upsertLiveStreams([liveStream]);
     } catch (error) {
       this.logger.warn?.(
@@ -472,16 +493,16 @@ export class MuxSync {
   }
 
   private async handleLiveStreamSimulcastTargetEvent(
-    simulcastTargetData: any
+    simulcastTargetData: SimulcastTargetData
   ): Promise<void> {
     const liveStreamId = simulcastTargetData?.live_stream_id;
     await this.handleLiveStreamUpdateEvent(liveStreamId, 'simulcast_target');
   }
 
   private async handleAssetStaticRenditionEvent(
-    staticRendition: any
+    staticRendition: StaticRenditionData
   ): Promise<void> {
-    const assetId = (staticRendition as any).asset_id;
+    const assetId = staticRendition.asset_id;
     await this.handleAssetUpdateEvent(assetId, 'static_rendition');
   }
 
