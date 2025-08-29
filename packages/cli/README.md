@@ -76,7 +76,7 @@ After running the init command:
    - MUX_TOKEN_SECRET: Your Mux token secret
    - MUX_WEBHOOK_SECRET: A secret key for webhook verification
 
-2. **Disable JWT verification for mux-webhook** (required for proper function):
+2. **Disable JWT verification for mux-webhook** (the mux-webhook handler will verify the webhook signature):
    
    **Option A - Using config.toml**:
    Add this to your `supabase/config.toml`:

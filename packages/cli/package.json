@@ -23,7 +23,6 @@
     "node": ">=18.0.0"
   },
   "bin": {
-    "mux-sync": "./dist/index.cjs",
     "mux-sync-supabase": "./dist/index.cjs"
   },
   "scripts": {

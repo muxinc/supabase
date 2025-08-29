@@ -12,13 +12,13 @@ Mux Sync Engine is a service that syncs Mux data to Postgres based on webhooks. 
 
 ## What gets synced
 
-The following Mux resources are automatically synced to your Postgres database:
+The following Mux resources are automatically synced to your Postgres database under the `mux` schema:
 
-- **Assets** (`mux_assets`): Video assets, including encoding status, playback IDs, and metadata
-- **Live Streams** (`mux_live_streams`): Live streaming configurations and status
-- **Uploads** (`mux_uploads`): Direct upload URLs and their status
-- **Webhook Events** (`mux_webhook_events`): All webhook events for audit and debugging
-- **Webhook Event Payloads** (`mux_webhook_event_payloads`): Complete webhook payloads
+- **Assets** (`assets`): Video assets, including encoding status, playback IDs, and metadata
+- **Live Streams** (`live_streams`): Live streaming configurations and status
+- **Uploads** (`uploads`): Direct upload URLs and their status
+- **Webhook Events** (`webhook_events`): All webhook events for audit and debugging
+- **Webhook Event Payloads** (`webhook_event_payloads`): Complete webhook payloads
 
 ## Installation
 
