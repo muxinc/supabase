@@ -33,6 +33,7 @@ export class PostgresClient {
     return rows.length > 0;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async query(text: string, params?: any[]): Promise<QueryResult> {
     return this.pool.query(text, params);
   }
