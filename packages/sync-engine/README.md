@@ -160,14 +160,12 @@ npm run test:watch
 # Run tests with UI
 npm run test:ui
 
-# Run only stable tests (for CI)
-./scripts/test-ci.sh
 ```
 
 #### Test Structure
 
 - `src/test/migrations.test.ts` - Tests for database migrations
-- `src/test/backfill-simple.test.ts` - Basic tests for sync functionality
+- `src/test/backfill.test.ts` - Tests for sync functionality
 - `src/test/helpers/mockMux.ts` - Mock objects for Mux API
 
 #### CI/CD
@@ -175,21 +173,6 @@ npm run test:ui
 The tests are designed to run in CI environments. See `.github/workflows/test.yml` for GitHub Actions configuration.
 
 For local development, tests use Testcontainers to spin up a PostgreSQL instance automatically.
-
-### Local Development
-
-For local testing and development, you can use Docker Compose:
-
-```bash
-# Start PostgreSQL for testing
-docker-compose -f docker-compose.test.yml up -d
-
-# Run tests against local database
-TEST_DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_mux_sync npm test
-
-# Stop PostgreSQL
-docker-compose -f docker-compose.test.yml down
-```
 
 ## Environment Variables
 
