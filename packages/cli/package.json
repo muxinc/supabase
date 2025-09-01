@@ -1,6 +1,6 @@
 {
   "name": "@r-delfino/mux-sync-supabase",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
@@ -23,7 +23,7 @@
     "node": ">=18.0.0"
   },
   "bin": {
-    "mux-sync-supabase": "./dist/index.cjs"
+    "mux-sync-supabase": "dist/index.cjs"
   },
   "scripts": {
     "clean": "rimraf dist",
@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/r-delfino95/mux-sync-engine.git"
+    "url": "git+https://github.com/r-delfino95/mux-sync-engine.git"
   },
   "bugs": {
     "url": "https://github.com/r-delfino95/mux-sync-engine/issues"
@@ -53,16 +53,16 @@
     "dist/index.cjs"
   ],
   "dependencies": {
-    "@r-delfino/mux-sync-engine": "^0.0.13",
+    "@r-delfino/mux-sync-engine": "^0.0.14",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",
-    "inquirer": "^9.2.15",
+    "inquirer": "^12.9.4",
     "ora": "^8.0.1",
     "pino": "^8.19.0",
     "pino-pretty": "^10.3.1"
   },
   "devDependencies": {
-    "@types/inquirer": "^9.0.7",
+    "@types/inquirer": "^9.0.9",
     "@typescript-eslint/eslint-plugin": "^8.36.0",
     "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^9.30.1",
