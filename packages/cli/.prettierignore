@@ -1,0 +1,29 @@
+# Build outputs
+dist/
+build/
+*.d.ts
+
+# Dependencies
+node_modules/
+
+# Documentation
+README.md
+*.md
+CHANGELOG.md
+
+# Configuration files
+package.json
+package-lock.json
+tsconfig.json
+tsup.config.ts
+eslint.config.js
+
+# Logs
+*.log
+cli_output.log
+
+# Scripts
+*.sh
+
+# Generated files
+*.generated.*
