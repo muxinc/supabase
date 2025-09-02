@@ -53,13 +53,13 @@ Deno.serve(async (req) => {
     // Check if dubbing already exists or is in progress for this asset
     const assetId = webhookData.data.asset_id;
     console.log('Checking existing dubbings for asset:', assetId);
-    
+
     const { data: existingDubbings, error: checkError } = await supabase
       .from('dubbings')
       .select('*')
       .eq('mux_asset_id', assetId)
       .in('target_language', TARGET_LANGUAGES);
-    
+
     if (checkError) {
       console.error('Error checking existing dubbings:', checkError);
       throw new Error(`Failed to check existing dubbings: ${checkError.message}`);
@@ -69,13 +69,13 @@ Deno.serve(async (req) => {
     const pendingLanguages = TARGET_LANGUAGES.filter(lang => {
       const existing = existingDubbings?.find(d => d.target_language === lang);
       if (!existing) return true; // Language not attempted yet
-      
+
       // Skip if already successfully completed
       if (existing.status === 'dubbed') {
         console.log(`Dubbing already completed for ${lang}, skipping`);
         return false;
       }
-      
+
       // Skip if currently processing (within last hour to avoid stuck jobs)
       if (existing.status === 'processing') {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         console.log(`Dubbing stuck for ${lang}, will retry`);
         return true;
       }
-      
+
       // Retry failed or timeout jobs
       console.log(`Will retry dubbing for ${lang} (previous status: ${existing.status})`);
       return true;
@@ -215,26 +215,26 @@ Deno.serve(async (req) => {
         if (jobStatus.status === 'dubbed') {
           console.log(`Dubbing completed successfully for ${job.targetLang}`);
           completedJobs.push({ ...job, jobStatus });
-          
+
           // Update database status
           await supabase
             .from('dubbings')
             .update({ status: 'dubbed' })
             .eq('elevenlabs_job_id', job.dubbing_id);
-          
+
           break;
         } else if (jobStatus.status === 'failed') {
           console.error(`Dubbing job failed for ${job.targetLang}`);
-          
+
           // Update database status with failure
           await supabase
             .from('dubbings')
-            .update({ 
+            .update({
               status: 'failed',
               error_message: 'ElevenLabs dubbing job failed'
             })
             .eq('elevenlabs_job_id', job.dubbing_id);
-          
+
           // Continue with other jobs instead of throwing
           break;
         }
@@ -246,16 +246,16 @@ Deno.serve(async (req) => {
 
       if (attempts >= maxAttempts && jobStatus?.status !== 'dubbed') {
         console.error(`Dubbing job timed out for ${job.targetLang}`);
-        
+
         // Update database status with timeout
         await supabase
           .from('dubbings')
-          .update({ 
+          .update({
             status: 'timeout',
             error_message: 'Dubbing job timed out after 5 minutes'
           })
           .eq('elevenlabs_job_id', job.dubbing_id);
-        
+
         // Continue with other jobs instead of throwing
       }
     }
@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
 
       } catch (error) {
         console.error(`Error processing ${targetLang} dubbing:`, error.message);
-        
+
         // Update database with processing error
         await supabase
           .from('dubbings')
@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
             error_message: `Processing error: ${error.message}`
           })
           .eq('elevenlabs_job_id', dubbing_id);
-        
+
         // Continue with other languages
       }
     }
@@ -416,15 +416,3 @@ Deno.serve(async (req) => {
     );
   }
 })
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/elevenlabs-dubbing' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
