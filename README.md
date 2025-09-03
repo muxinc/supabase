@@ -12,22 +12,35 @@
 
 ## Getting started
 
+**Dependencies**
+
+Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init)
+
+**Setup**
+
 Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets
 
 ```
-npx @mux/supabase@0.0.1 init
+npx @mux/supabase init
 ```
 
 This will:
 
 - Create the `mux` schema and corresponding tables
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
+- Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` in the Supabase dashboard
 
-Deploy:
+Deploy the webhook:
 
 ```
 npx supabase functions deploy mux-webhook --prune
 ```
+
+After deploying the webhook function, set up the webhook in the Mux dashboard and add `MUX_WEBHOOK_SECRET` to the Supabase dashboard
+
+**Verify that it's working**
+
+Go to your Mux dashboard, make sure you're in the correct environment and upload an asset. Then navigate to your Supabase dashboard and you should see a row for the Asset in the `mux` schema `assets` table and the `id` should match the ID for the Asset in the Mux dashboard.
 
 ## Core Concepts
 
