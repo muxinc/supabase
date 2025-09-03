@@ -30,6 +30,16 @@ This will:
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
 - Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` in the Supabase dashboard
 
+**Disable JWT auth on the webhook endpoint**
+
+- Open `supabase/config.toml`
+- Add this code to disable the jwt auth on the webhook endpoint (the Mux SDK when handling the webhook will [verify the signature](https://www.mux.com/docs/core/verify-webhook-signatures))
+
+```toml
+[functions.mux-webhook]
+verify_jwt = false
+```
+
 Deploy the webhook:
 
 ```
