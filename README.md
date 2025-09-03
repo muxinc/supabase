@@ -1,154 +1,67 @@
-# supabase-mux
+# @mux/supabase
 
-Supabase-Mux will connect Supabase to your Mux account, so that you can build a robust Video integration driven by AI workflows that you control, while Mux handles the video infrastructure behind the scenes.
 
-✅ What this integration does:
+`@mux/supabase` contains a CLI for integrating your Mux account with your Supabase account. Setting this up will:
 
-- Syncs data from your Mux account to Supabase
-- Creates several database tables directly in your Supabase instance
-- Save the current state of Mux Assets & Mux Live Streams, directly in your supabase database
-- Save metadata about Assets and Live Streams in your database
-- Expose integration points so that you can create your own workflows around your video data. This is not limited to “AI”, but this is the most common use case.
+1. Create a `mux` schema that contains tables for:
+  - `assets` ([Assets](https://www.mux.com/docs/api-reference/video/assets))
+  - `live_streams` ([Live Streams](https://www.mux.com/docs/api-reference/video/live-streams))
+  - `uploads` ([Direct Uploads](https://www.mux.com/docs/api-reference/video/direct-uploads))
+  - `events` (Webhook events)
+2. Set up an edge function for receiving webhooks and keeping data in the `mux` schema up-to-date
 
-Think about things like: when a new asset is ready, you want to
+## Getting started
 
-- Create translations
-- Create summarizations
-- Create chapters
-- Create vector embeddings
-- Extract audio or thumbnails and analyze the content for tagging, labeling, grouping or content moderation
-
-❌ What this integration DOES NOT do:
-
-- Run AI models, decide what model to use or create prompts for you
-
-## Step 1: Add env vars to Edge Functions in the supabase dashboard
-
-- In the Supabase *Edge Functions* dashboard, add Mux env vars:
-- `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`
-
-Note that after updating env vars your functions have to be re-deployed. Keep this in mind when updating env variables.
-
-## Step 2: Create a supabase webhook handler:
+Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets
 
 ```
-npx supabase functions new mux-webhook
+npx @mux/supabase@0.0.1 init
 ```
 
-Open up `supabase/config.toml` and set `verify_jwt = false` for this function
+This will:
 
-- This will create a function in `supabase/functions/mux-webhook/`
+- Create the `mux` schema and corresponding tables
+- Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
 
-2. Open up the webhook function that you just created and edit it to connect the `handleMuxWebhook` handler
-
-```js
-// supabase/functions/mux-webhook/index.js
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { handleMuxWebhook } from '../../../lib/webhook-handler'
-
-Deno.serve(handleMuxWebhook);
-```
-
-- calling `handleMuxWebhook(req)` will run all of your workflows
-
-The very last step is to deploy the webhook handler `npm run functions:deploy` will deploy your functions to supabase.
-  - Open up the supabase dashboard and copy the `mux-webhook` function URL, it should look something like: `https://xxxxxxx.supabase.co/functions/v1/mux-webhook`
-  - Go to the Mux dashboard and configure this webhook endpoint for your environment
-  - Make sure the environment on Mux's side where you are configuring this webhook matches the environment that your API keys are configured for in this project
-
-## Step 3: Create your workflows
-
-Workflows are code that you run with your own business logic which can include calls out to LLMS or whatever you want to do.
-
-Let's use the example of creating a workflow to handle **content moderation** -- a common thing that UGC platforms need to build.
-
-To create a workflow, start with a standard supabase function:
-
+Deploy:
 
 ```
-npx supabase functions new content-moderation
+npx supabase functions deploy mux-webhook --prune
 ```
 
-Open `supabase/config.toml` and set `verify_jwt = false` for this function
+## Core Concepts
 
-- This will create a function in the directory (just like any supabase function): `supabase/functions/content-moderation/`
+Most Mux integrations require **saving data into a database**. The general flow to use Mux is:
 
-Now comes the magic, create a file in the `mux-webhook` directory called mux.toml: `supabase/functions/mux-webhook/mux.toml`. Add a trigger for this function:
+- Videos can be uploaded directly to Mux with the [Direct Uploads API](https://www.mux.com/docs/guides/upload-files-directly)
+- Videos can be uploaded with a URL pointing to a [publicly avilable video file](https://www.mux.com/docs/core/stream-video-files)
+- Videos can be uploaded directly in the Mux dashboard
 
-This says that the `content-moderation` workflow defined in `supabase/functions/content-moderation` will be triggered when the `video.asset.ready` webhook fires
+When a video (or audio file) is uploaded to Mux, it is [an Asset](https://www.mux.com/docs/api-reference/video/assets)
 
-```
-# mux.toml
-[workflows.content-moderation]
-events = ["video.asset.ready"]
-```
+**Saving data associated with each video**
 
-## Example workflow file
+When saving data into a database, typically the application would save information about the Mux Asset, like:
+  - Asset ID
+  - Playback ID
+  - Duration
+  - Aspect ratio
 
-The only thing you need to do in your workflow file is call:
+`@mux/supabase` will save all this data for you under the `mux` schema.
 
-```js
-await writeWorkflowOutput({
-  slug: 'content-moderation', // slug is an identifier for the workflow
-  version: '1.1',            // version for this workflow
-  mux_asset_id: '1.1',       // every workflow should correspond to a MuxAsset
-  started_at: new Date(),
-  completed_at: new Date(),
-  output_data: {}            // arbitrary JSON that you want to save as the output of this workflow
-})
-```
+In addition to the information from Mux, the application also keeps track of things like:
+  - Which user uploaded the video
+  - Structural/organization things, like if the video is part of a series or related to other videos
+  - Video title, description, summary, chapter markers, etc.
+  - Who has access to view the video
+  - etc.
 
-```js
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+`@mux/supabase` does not save this kind of inormation, which is an application-level concern.
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
-import { writeWorkflowOutput } from '../../../lib/workflow-output.ts'
+**Webhooks**
 
-async function requestModeration (playbackId: string) {
-  // Do your moderation logic, make API calls to LLMs, etc.
-  // return a JSON object you want to save as the Workflow output
-  return {
-    adult: 0.0,
-    voilence: 0.0,
-    suggestive: 0.2
-  }
-}
+The recommended way to keep data synced between Mux Assets and your database is to set up [Webhooks](https://www.mux.com/docs/core/listen-for-webhooks).
 
-Deno.serve(async (req) => {
-  const start = new Date();
-  const event = (await req.json() as UnwrapWebhookEvent);
-  const asset = event.data
-  if (!asset) {
-    console.log('No asset');
-    return new Response('No asset provided', { status: 400 });
-  }
-  const playbackId = asset.playback_ids && asset.playback_ids[0] && asset.playback_ids[0].id;
-  if (!playbackId) {
-    console.log('No playbackId');
-    return new Response('No playbackId provided', { status: 400 });
-  }
-  const resp = await requestModeration(playbackId);
-  const complete = new Date();
-  await writeWorkflowOutput({
-    slug: 'content-moderation',
-    version: '1',
-    started_at: start,
-    completed_at: complete,
-    mux_asset_id: asset.id,
-    output_data: resp
-  });
-});
-```
+That way, when an Asset gets created, updated or deleted, your application server receives a webhook and can update the database accordingly.
 
-# TODO
-
-- [ ] Run linting in CI
-- [ ] Add tests
-- [ ] Fix lint warnings around using TS `any`
-- [ ] Fix lint warnings around using TS `any`
-- [ ] Add webhook signature verification
-- [ ] Figure out a backfill story
+`@mux/supabase` handles webhooks & keeping data updated in the `mux` schema.
