@@ -1,6 +1,6 @@
 {
-  "name": "@r-delfino/mux-sync-engine",
-  "version": "0.0.15",
+  "name": "@mux/sync-engine",
+  "version": "0.0.1-alpha.0",
   "description": "Mux Sync Engine to sync Mux data based on webhooks to Postgres",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -24,16 +24,16 @@
     "supabase",
     "deno"
   ],
-  "author": "Renzo Delfino",
+  "author": "@muxinc",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/r-delfino95/mux-sync-engine.git"
+    "url": "git+https://github.com/muxinc/supabase.git"
   },
   "bugs": {
-    "url": "https://github.com/r-delfino95/mux-sync-engine/issues"
+    "url": "https://github.com/muxinc/supabase/issues"
   },
-  "homepage": "https://github.com/r-delfino95/mux-sync-engine#readme",
+  "homepage": "https://github.com/muxinc/supabase/sync-engine#readme",
   "scripts": {
     "clean": "rimraf dist",
     "prebuild": "npm run clean",

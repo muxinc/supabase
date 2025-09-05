@@ -9,9 +9,7 @@ const DEFAULT_SCHEMA = 'mux';
 
 function getMigrationsPath(): string {
   try {
-    const packageJsonPath = require.resolve(
-      '@r-delfino/mux-sync-engine/package.json'
-    );
+    const packageJsonPath = require.resolve('@mux/sync-engine/package.json');
     const packageDir = path.dirname(packageJsonPath);
 
     // Check if migrations exist in dist/migrations (compiled package)

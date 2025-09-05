@@ -4,11 +4,12 @@ import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
 import pino from 'pino';
-import { runMigrations } from '@r-delfino/mux-sync-engine';
+import { runMigrations } from '@mux/sync-engine';
 import packageJson from '../../package.json';
 
-const muxSyncEngineVersion =
-  packageJson.dependencies['@r-delfino/mux-sync-engine'];
+const muxSyncEngineVersion = packageJson.dependencies[
+  '@mux/sync-engine'
+].replace(/^\^/, '');
 const supabaseDir = 'supabase';
 
 interface InitAnswers {
@@ -85,7 +86,7 @@ function createMuxWebhookFunction(muxWebhookDir: string): void {
   createFunctionsEnvFile();
 
   const functionCode = `import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { MuxSync } from 'npm:@r-delfino/mux-sync-engine@${muxSyncEngineVersion}'
+import { MuxSync } from 'npm:@mux/sync-engine@${muxSyncEngineVersion}'
 
 // Load secrets from environment variables
 const databaseUrl = Deno.env.get('SUPABASE_DB_URL') || 'postgresql://your-database-url'
@@ -148,7 +149,7 @@ Deno.serve(async (req) => {
   // Create deno.json for imports
   const denoConfig = {
     imports: {
-      '@r-delfino/mux-sync-engine': `npm:@r-delfino/mux-sync-engine@${muxSyncEngineVersion}`,
+      '@mux/sync-engine': `npm:@mux/sync-engine@${muxSyncEngineVersion}`,
     },
   };
 

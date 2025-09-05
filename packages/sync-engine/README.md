@@ -22,7 +22,7 @@ The following Mux resources are automatically synced to your Postgres database u
 ## Installation
 
 ```bash
-npm install @r-delfino/mux-sync-engine
+npm install @mux/sync-engine
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ npm install @r-delfino/mux-sync-engine
 ### Basic Setup
 
 ```typescript
-import { MuxSync, runMigrations } from '@r-delfino/mux-sync-engine';
+import { MuxSync, runMigrations } from '@mux/sync-engine';
 
 // Run database migrations first
 await runMigrations({
@@ -111,7 +111,7 @@ The sync engine creates tables under the `mux` schema:
 
 ```typescript
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { MuxSync } from 'npm:@r-delfino/mux-sync-engine';
+import { MuxSync } from 'npm:@mux/sync-engine';
 
 const muxSync = new MuxSync({
   databaseUrl: Deno.env.get('SUPABASE_DB_URL')!,

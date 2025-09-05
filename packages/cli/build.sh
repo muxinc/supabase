@@ -17,4 +17,4 @@ npm run build
 chmod +x dist/index.cjs
 
 echo "✅ CLI built successfully!"
-echo "You can now run: npx mux-sync-supabase init" 
+echo "You can now run: npx mux-supabase init" 

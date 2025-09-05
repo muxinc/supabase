@@ -33,7 +33,7 @@ cd "$SCRIPT_DIR"
 
 # Uninstall any previous version to avoid conflicts
 echo "🧹 Uninstalling any previous version..."
-npm uninstall -g @r-delfino/mux-sync-supabase >/dev/null 2>&1 || true
+npm uninstall -g @mux/supabase >/dev/null 2>&1 || true
 
 # Detect global npm bin dir
 BIN_DIR="$(npm bin -g 2>/dev/null || true)"
@@ -46,7 +46,7 @@ fi
 
 # Remove any existing binary files if uninstall didn't clean them up
 echo "🧹 Cleaning up any existing binary files..."
-for name in mux-sync mux-sync-supabase; do
+for name in mux-sync mux-supabase; do
   if command -v "$name" >/dev/null 2>&1; then
     BIN_PATH="$(command -v "$name")"
     if [[ -w "$BIN_PATH" ]]; then
@@ -73,7 +73,7 @@ echo "🔧 Modifying package.json to use local sync-engine..."
 node -e "
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-pkg.dependencies['@r-delfino/mux-sync-engine'] = 'file:../sync-engine';
+pkg.dependencies['@mux/sync-engine'] = 'file:../sync-engine';
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
 "
 echo "✅ Package.json modified"
@@ -96,8 +96,8 @@ mv package.json.backup package.json
 
 echo ""
 echo "✅ CLI installed globally with local sync-engine!"
-echo "You can now test it with: mux-sync-supabase init"
+echo "You can now test it with: mux-supabase init"
 echo ""
-echo "To uninstall later, run: npm uninstall -g @r-delfino/mux-sync-supabase"
+echo "To uninstall later, run: npm uninstall -g @mux/supabase"
 echo ""
 echo "Note: The CLI is now using the local sync-engine from: $SYNC_ENGINE_DIR"
