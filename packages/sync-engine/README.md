@@ -65,16 +65,16 @@ const muxSync = new MuxSync({
   muxTokenId: 'your-mux-token-id',
   muxTokenSecret: 'your-mux-token-secret',
   muxWebhookSecret: 'your-webhook-secret',
-  
+
   // Optional: Backfill related entities to ensure foreign key integrity
   backfillRelatedEntities: true,
-  
+
   // Optional: Always fetch fresh data from Mux API instead of using webhook data
   revalidateEntityViaMuxApi: false,
-  
+
   // Optional: Maximum number of Postgres connections
   maxPostgresConnections: 10,
-  
+
   // Optional: Custom logger
   logger: console,
 });
@@ -101,11 +101,10 @@ await muxSync.syncBackfill({ object: 'mux_uploads' });
 
 The sync engine creates tables under the `mux` schema:
 
-- `mux.mux_assets` - Video assets with encoding status and playback information
-- `mux.mux_live_streams` - Live streaming configurations
-- `mux.mux_uploads` - Direct upload URLs and status
-- `mux.mux_webhook_events` - Webhook event metadata and payloads
-
+- `mux.assets` - Video assets with encoding status and playback information
+- `mux.live_streams` - Live streaming configurations
+- `mux.uploads` - Direct upload URLs and status
+- `mux.webhook_events` - Webhook event metadata and payloads
 
 ### Supabase Edge Function Example
 
@@ -177,7 +176,7 @@ For local development, tests use Testcontainers to spin up a PostgreSQL instance
 The following environment variables are required:
 
 - `MUX_TOKEN_ID` - Your Mux token ID
-- `MUX_TOKEN_SECRET` - Your Mux token secret  
+- `MUX_TOKEN_SECRET` - Your Mux token secret
 - `MUX_WEBHOOK_SECRET` - Your webhook signing secret
 - `DATABASE_URL` - PostgreSQL connection string
 
@@ -199,7 +198,7 @@ The sync engine handles all Mux webhook events, including:
 - `video.live_stream.updated`
 - `video.live_stream.deleted`
 - `video.upload.created`
-- `video.upload.asset_created` 
+- `video.upload.asset_created`
 - `video.upload.cancelled`
 - `video.upload.timeout`
 - `video.upload.errored`
