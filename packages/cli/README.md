@@ -99,7 +99,6 @@ When saving data into a database, typically the application would save informati
 - Playback ID
 - Duration
 - Aspect ratio
-- `meta` (custom metadata you provide when creating or updating the Asset)
 
 `@mux/supabase` will save all this data for you under the `mux` schema.
 
@@ -107,13 +106,12 @@ In addition to the information from Mux, the application also keeps track of thi
 
 - Which user uploaded the video
 - Structural/organization things, like if the video is part of a series or related to other videos
-- Video title, description, summary, chapter markers, etc.
+- Video details like: description, summary, chapter markers, etc.
 - Who has access to view the video
-- etc.
 
 `@mux/supabase` does not save this kind of information, which is an application-level concern.
 
-> **Note:** Mux Assets support a `meta` field for arbitrary JSON key/value pairs. Since this field is part of the Asset object returned by Mux, `@mux/supabase` does sync and store it in the `assets` table. Higher-level concepts (titles, chapters, permissions, etc.) are still considered application-level concerns.
+> Mux Assets DO have [fields for metadata](https://www.mux.com/docs/guides/add-metadata-to-your-videos): `title`, `creator_id` and `external_id` which will be saved under the `meta` JSON column in the `assets` table. Higher-level concepts (titles, chapters, permissions, etc.) are still considered application-level concerns.
 
 ### Webhooks
 
