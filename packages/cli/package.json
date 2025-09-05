@@ -1,0 +1,76 @@
+{
+  "name": "@mux/supabase",
+  "version": "0.0.1",
+  "description": "CLI tool to initialize Mux Sync Engine with Supabase",
+  "keywords": [
+    "mux",
+    "supabase",
+    "cli",
+    "webhook",
+    "sync",
+    "postgres"
+  ],
+  "type": "commonjs",
+  "main": "./dist/index.cjs",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "mux-supabase": "dist/index.cjs"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "build": "tsup",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "@muxinc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muxinc/supabase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muxinc/supabase/issues"
+  },
+  "homepage": "https://github.com/muxinc/supabase#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist/index.cjs"
+  ],
+  "dependencies": {
+    "@mux/sync-engine": "^0.0.1",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "inquirer": "^12.9.4",
+    "ora": "^8.0.1",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,32 @@
+# Build outputs
+dist/
+build/
+*.d.ts
+
+# Dependencies
+node_modules/
+
+# Documentation
+README.md
+*.md
+CHANGELOG.md
+
+# Configuration files
+package.json
+package-lock.json
+tsconfig.json
+tsup.config.ts
+eslint.config.js
+vitest.config.ts
+
+# Test files (keep test formatting as-is)
+src/test/
+
+# Logs
+*.log
+
+# Generated files
+*.generated.*
+
+# Database migration files
+src/database/migrations/

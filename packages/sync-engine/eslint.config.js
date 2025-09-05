@@ -31,8 +31,6 @@ export default [
       prettier: prettier,
     },
     rules: {
-      ...prettierConfig.rules,
-      'prettier/prettier': 'error',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -40,42 +38,11 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off',
-    },
-  },
-  {
-    files: ['**/webhook-handler.ts', 'supabase/functions/**/*.ts'],
-    languageOptions: {
-      parser: typescriptParser,
-      globals: {
-        Deno: 'readonly',
-        Request: 'readonly',
-        Response: 'readonly',
-        console: 'readonly',
-      },
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      prettier: prettier,
-    },
-    rules: {
-      ...prettierConfig.rules,
       'prettier/prettier': 'error',
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'off',
     },
   },
+  prettierConfig,
   {
-    ignores: [
-      'dist/',
-      'packages/*/dist/',
-      'node_modules/',
-      'supabase/migrations/',
-      'supabase/functions/',
-    ],
+    ignores: ['dist/', 'node_modules/', 'src/test/'],
   },
 ];

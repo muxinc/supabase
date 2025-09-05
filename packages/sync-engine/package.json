@@ -1,0 +1,80 @@
+{
+  "name": "@mux/sync-engine",
+  "version": "0.0.1",
+  "description": "Mux Sync Engine to sync Mux data based on webhooks to Postgres",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "keywords": [
+    "mux",
+    "sync",
+    "webhook",
+    "postgres",
+    "database",
+    "supabase",
+    "deno"
+  ],
+  "author": "@muxinc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muxinc/supabase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muxinc/supabase/issues"
+  },
+  "homepage": "https://github.com/muxinc/supabase/sync-engine#readme",
+  "scripts": {
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "build": "tsup && cp -r src/database/migrations dist/migrations",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json,sql}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json,sql}\"",
+    "prepublishOnly": "npm run build",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@mux/mux-node": "^12.3.0",
+    "pg": "^8.16.0",
+    "pg-node-migrations": "0.0.8",
+    "pino": "^9.7.0",
+    "yesql": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.15.2",
+    "@types/yesql": "^4.1.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "@vitest/ui": "^3.2.4",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^5.0.0",
+    "testcontainers": "^10.11.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
+  }
+}
