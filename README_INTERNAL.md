@@ -8,6 +8,7 @@
 - Run `npm install`
 - Run `npm run build`
 - Publish `npm publish --access public`
+- If publishing on an alpha tag, run `npm publish --access public --tag alpha`
 
 **Publish `@mux/supabase`**
 
@@ -16,3 +17,4 @@
 - Run `npm install`
 - Run `npm run build`
 - Publish `npm publish --access public`
+- If publishing on an alpha tag, run `npm publish --access public --tag alpha`
