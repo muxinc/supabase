@@ -1,4 +1,4 @@
--- Basic indexes for essential queries
+-- Basic indexes for essential queries (Foreign Key relationships only)
 
 create index if not exists idx_mux_assets_live_stream_id on "mux"."assets"(live_stream_id);
 
