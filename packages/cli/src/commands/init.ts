@@ -164,6 +164,110 @@ Deno.serve(async (req) => {
   );
 }
 
+function updateSupabaseConfig(): void {
+  const configPath = path.join(supabaseDir, 'config.toml');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      chalk.yellow('⚠️  config.toml not found in supabase directory')
+    );
+    return;
+  }
+
+  let configContent = fs.readFileSync(configPath, 'utf-8');
+
+  // Check if [functions.mux-webhook] section with verify_jwt = false already exists
+  const muxWebhookSectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
+  const verifyJwtRegex = /^\s*verify_jwt\s*=\s*false\s*$/m;
+
+  const hasMuxWebhookSection = muxWebhookSectionRegex.test(configContent);
+
+  if (hasMuxWebhookSection) {
+    // Check if verify_jwt = false exists in the mux-webhook section
+    const lines = configContent.split('\n');
+    let inMuxWebhookSection = false;
+    let hasVerifyJwt = false;
+
+    for (const line of lines) {
+      if (line.match(muxWebhookSectionRegex)) {
+        inMuxWebhookSection = true;
+        continue;
+      }
+
+      if (inMuxWebhookSection) {
+        // If we hit another section, we're done with mux-webhook section
+        if (line.match(/^\[.*\]$/)) {
+          break;
+        }
+
+        if (line.match(verifyJwtRegex)) {
+          hasVerifyJwt = true;
+          break;
+        }
+      }
+    }
+
+    if (hasVerifyJwt) {
+      console.log(
+        chalk.gray(
+          'config.toml already has verify_jwt = false for mux-webhook function'
+        )
+      );
+      return;
+    }
+  }
+
+  // Add the configuration
+  const configToAdd = hasMuxWebhookSection
+    ? '\nverify_jwt = false\n'
+    : '\n[functions.mux-webhook]\nverify_jwt = false\n';
+
+  if (hasMuxWebhookSection) {
+    // Find the mux-webhook section and add verify_jwt after it
+    const lines = configContent.split('\n');
+    const newLines = [];
+    let inMuxWebhookSection = false;
+    let addedVerifyJwt = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      newLines.push(line);
+
+      if (line.match(muxWebhookSectionRegex)) {
+        inMuxWebhookSection = true;
+        continue;
+      }
+
+      if (inMuxWebhookSection && !addedVerifyJwt) {
+        // If we hit another section or end of file, add verify_jwt before it
+        if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
+          if (line.match(/^\[.*\]$/)) {
+            // Insert before the new section
+            newLines.splice(-1, 0, 'verify_jwt = false');
+          } else {
+            // Add at the end
+            newLines.push('verify_jwt = false');
+          }
+          addedVerifyJwt = true;
+          inMuxWebhookSection = false;
+        }
+      }
+    }
+
+    configContent = newLines.join('\n');
+  } else {
+    // Append the entire section at the end
+    configContent += configToAdd;
+  }
+
+  fs.writeFileSync(configPath, configContent);
+  console.log(
+    chalk.green(
+      '✅ Added verify_jwt = false to [functions.mux-webhook] in config.toml'
+    )
+  );
+}
+
 async function setupMuxWebhook(): Promise<void> {
   const muxWebhookDir = path.join(supabaseDir, 'functions', 'mux-webhook');
 
@@ -171,6 +275,7 @@ async function setupMuxWebhook(): Promise<void> {
 
   if (shouldCreate) {
     createMuxWebhookFunction(muxWebhookDir);
+    updateSupabaseConfig();
   }
 }
 
@@ -179,7 +284,11 @@ async function promptForDatabaseUrl(): Promise<string> {
     {
       type: 'input',
       name: 'databaseUrl',
-      message: 'Enter your Supabase database URL:',
+      message:
+        'Enter your Supabase database URL:\n' +
+        '  (Click the "Connect" button in the Supabase dashboard and use the\n' +
+        '   "Session pooler" option toward the bottom. Replace [YOUR-PASSWORD]\n' +
+        '   with the database password you configured when setting up your project)',
       validate: (input: string) => {
         if (!input) return 'Database URL is required';
         if (!input.includes('postgresql://'))

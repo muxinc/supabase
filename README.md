@@ -52,6 +52,31 @@ After deploying the webhook function, set up the webhook in the Mux dashboard an
 
 Go to your Mux dashboard, make sure you're in the correct environment and upload an asset. Then navigate to your Supabase dashboard and you should see a row for the Asset in the `mux` schema `assets` table and the `id` should match the ID for the Asset in the Mux dashboard.
 
+## Backfilling Existing Data
+
+If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database:
+
+```typescript
+import { createMuxSync } from '@mux/sync-engine';
+
+const muxSync = createMuxSync({
+  databaseUrl: 'your-supabase-database-url',
+  muxTokenId: 'your-mux-token-id',
+  muxTokenSecret: 'your-mux-token-secret',
+});
+
+// Backfill all data
+const result = await muxSync.syncBackfill({ object: 'all' });
+console.log(`Synced ${result.muxAssets?.synced} assets`);
+console.log(`Synced ${result.muxLiveStreams?.synced} live streams`);
+console.log(`Synced ${result.muxUploads?.synced} uploads`);
+
+// Backfill specific object types
+await muxSync.syncBackfill({ object: 'mux_assets' });
+await muxSync.syncBackfill({ object: 'mux_live_streams' });
+await muxSync.syncBackfill({ object: 'mux_uploads' });
+```
+
 ## Core Concepts
 
 Most Mux integrations require **saving data into a database**. The general flow to use Mux is:

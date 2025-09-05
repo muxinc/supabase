@@ -88,13 +88,8 @@ describe('processWebhook', () => {
     );
     expect(eventResult.rows).toHaveLength(1);
     expect(eventResult.rows[0].type).toBe('video.asset.ready');
-
-    // Verify webhook payload was stored
-    const payloadResult = await client.query(
-      'SELECT * FROM mux.webhook_event_payloads WHERE webhook_event_id = $1',
-      [mockWebhookEvents.assetReady.id]
-    );
-    expect(payloadResult.rows).toHaveLength(1);
+    expect(eventResult.rows[0].raw_body).toEqual(mockWebhookEvents.assetReady.data);
+    expect(eventResult.rows[0].headers).toEqual(headers);
 
     // Verify asset was upserted
     const assetResult = await client.query(

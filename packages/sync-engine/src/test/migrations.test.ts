@@ -66,7 +66,6 @@ describe('runMigrations', () => {
     expect(tableNames).toContain('live_streams');
     expect(tableNames).toContain('uploads');
     expect(tableNames).toContain('webhook_events');
-    expect(tableNames).toContain('webhook_event_payloads');
     expect(tableNames).toContain('migrations');
   });
 

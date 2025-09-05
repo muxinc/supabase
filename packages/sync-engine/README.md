@@ -18,7 +18,6 @@ The following Mux resources are automatically synced to your Postgres database u
 - **Live Streams** (`live_streams`): Live streaming configurations and status
 - **Uploads** (`uploads`): Direct upload URLs and their status
 - **Webhook Events** (`webhook_events`): All webhook events for audit and debugging
-- **Webhook Event Payloads** (`webhook_event_payloads`): Complete webhook payloads
 
 ## Installation
 
@@ -105,8 +104,7 @@ The sync engine creates tables under the `mux` schema:
 - `mux.mux_assets` - Video assets with encoding status and playback information
 - `mux.mux_live_streams` - Live streaming configurations
 - `mux.mux_uploads` - Direct upload URLs and status
-- `mux.mux_webhook_events` - Webhook event metadata
-- `mux.mux_webhook_event_payloads` - Complete webhook payloads
+- `mux.mux_webhook_events` - Webhook event metadata and payloads
 
 
 ### Supabase Edge Function Example

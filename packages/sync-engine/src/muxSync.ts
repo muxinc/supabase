@@ -4,7 +4,6 @@ import { muxAssetsSchema } from './schemas/mux_assets';
 import { muxLiveStreamsSchema } from './schemas/mux_live_streams';
 import { muxUploadsSchema } from './schemas/mux_uploads';
 import { muxWebhookEventsSchema } from './schemas/mux_webhook_events';
-import { muxWebhookEventPayloadsSchema } from './schemas/mux_webhook_event_payloads';
 import {
   MuxSyncConfig,
   Sync,
@@ -528,10 +527,6 @@ export class MuxSync {
       attempts: event.attempts || [],
       environment: event.environment || {},
       object: event.object || {},
-    };
-
-    const transformedPayload = {
-      webhook_event_id: event.id,
       raw_body: event.data,
       headers,
     };
@@ -542,12 +537,6 @@ export class MuxSync {
         'webhook_events',
         muxWebhookEventsSchema,
         { conflict: 'id' }
-      );
-      await this.postgresClient.upsertMany(
-        [transformedPayload],
-        'webhook_event_payloads',
-        muxWebhookEventPayloadsSchema,
-        { conflict: 'webhook_event_id' }
       );
 
       this.logger.info(`Stored webhook event ${event.id}`);

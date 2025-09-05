@@ -90,7 +90,7 @@ export class PostgresClient {
 
     const prepared = sql(`
     select ${idField} from "${this.config.schema}"."${table}"
-    where ${idField}=any(:ids::text[]);
+    where ${idField} in (:ids);
     `)({ ids });
 
     const { rows } = await this.query(prepared.text, prepared.values);
