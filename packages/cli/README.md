@@ -20,8 +20,7 @@ Before setting this up, you should already have Supabase initialized in your pro
 
 Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets.
 
-```
-bash
+```bash
 npx @mux/supabase init
 ```
 
@@ -36,16 +35,14 @@ This will:
 - Open `supabase/config.toml`
 - Add this code to disable the JWT auth on the webhook endpoint (the Mux SDK when handling the webhook will [verify the signature](https://www.mux.com/docs/core/verify-webhook-signatures)):
 
-```
-toml
+```toml
 [functions.mux-webhook]
 verify_jwt = false
 ```
 
 Deploy the webhook:
 
-```
-bash
+```bash
 npx supabase functions deploy mux-webhook --prune
 ```
 
@@ -59,8 +56,7 @@ Go to your Mux dashboard, make sure you're in the correct environment and upload
 
 If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database:
 
-```
-typescript
+```typescript
 import { createMuxSync } from '@mux/sync-engine';
 
 const muxSync = createMuxSync({
