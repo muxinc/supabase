@@ -10,7 +10,7 @@
    - `events` (Webhook events)
 2. Set up an edge function for receiving webhooks and keeping data in the `mux` schema up-to-date
 
-View the [README for @mux/supabase](./packages/cli/README.md).
+View the [README for @mux/supabase](./packages/supabase/README.md).
 
 # @mux/sync-engine
 

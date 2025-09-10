@@ -12,7 +12,7 @@
 
 **Publish `@mux/supabase`**
 
-- First, `cd packages/cli`
+- First, `cd packages/supabase`
 - If there's a new version of `@mux/sync-engine`, update the `package.json`
 - Run `npm install`
 - Run `npm run build`
