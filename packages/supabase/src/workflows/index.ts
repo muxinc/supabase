@@ -27,9 +27,13 @@ async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
     console.log(`Loaded mux configuration from: ${tomlPath}`);
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
-      console.log('Did not find mux.toml in supabase/functions/mux-webhook/mux.toml');
+      console.log(
+        'Did not find mux.toml in supabase/functions/mux-webhook/mux.toml'
+      );
     } else {
-      console.log(`Error reading mux.toml file. It should be in supabase/functions/mux-webhook/mux.toml`);
+      console.log(
+        `Error reading mux.toml file. It should be in supabase/functions/mux-webhook/mux.toml`
+      );
       console.error(error);
     }
   }
