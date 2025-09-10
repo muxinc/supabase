@@ -6,7 +6,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import type { UnwrapWebhookEvent } from 'https://esm.sh/@mux/mux-node@12';
 
-import { writeWorkflowOutput } from '../../../lib/workflow-output.ts'
 import OpenAI from "openai";
 
 const deliveryDomain = "mux.com"; // replace this with a custom delivery domain if that's what you're using
@@ -114,14 +113,6 @@ Deno.serve(async (req) => {
   const resp = await requestModeration(imageUrls);
   const complete = new Date();
   try {
-    await writeWorkflowOutput({
-      slug: 'content-moderation',
-      version: '1',
-      started_at: start,
-      completed_at: complete,
-      mux_asset_id: asset.id,
-      output_data: resp
-    });
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
