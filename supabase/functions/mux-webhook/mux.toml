@@ -1,2 +1,5 @@
 [workflows.content-moderation]
 events = ["video.asset.ready"]
+
+[workflows.video-embeddings]
+events = ["video.asset.track.ready"]
