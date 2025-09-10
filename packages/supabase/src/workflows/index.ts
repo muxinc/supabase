@@ -9,41 +9,29 @@ interface WorkflowConfig {
 
 async function scanForMuxFunctions(): Promise<Map<string, string[]>> {
   const functionEventMap = new Map<string, string[]>();
+  const tomlPath = './mux.toml';
 
-  // Try to find the centralized mux.toml file
-  const possibleTomlPaths = [
-    './mux.toml',
-    '../mux.toml',
-    '../../mux.toml',
-    './supabase/functions/mux-webhook/mux.toml',
-    '/home/deno/functions/mux-webhook/mux.toml',
-  ];
+  try {
+    const tomlContent = await Deno.readTextFile(tomlPath);
+    const config = parseWorkflowToml(tomlContent);
 
-  for (const tomlPath of possibleTomlPaths) {
-    try {
-      const tomlContent = Deno.readTextFileSync(tomlPath);
-      const config = parseWorkflowToml(tomlContent);
-
-      for (const [functionName, events] of Object.entries(config)) {
-        if (Array.isArray(events)) {
-          functionEventMap.set(functionName, events);
-          console.log(
-            `Found mux function: ${functionName} handles events:`,
-            events
-          );
-        }
+    for (const [functionName, events] of Object.entries(config)) {
+      if (Array.isArray(events)) {
+        functionEventMap.set(functionName, events);
+        console.log(
+          `Found mux function: ${functionName} handles events:`,
+          events
+        );
       }
-
-      console.log(`Loaded mux configuration from: ${tomlPath}`);
-      break;
-    } catch {
-      // Continue to next path
     }
-  }
-
-  if (functionEventMap.size === 0) {
-    console.warn('Could not load mux.toml, using fallback configuration');
-    functionEventMap.set('content-moderation', ['video.asset.ready']);
+    console.log(`Loaded mux configuration from: ${tomlPath}`);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      console.log('Did not find mux.toml in supabase/functions/mux-webhook/mux.toml');
+    } else {
+      console.log(`Error reading mux.toml file. It should be in supabase/functions/mux-webhook/mux.toml`);
+      console.error(error);
+    }
   }
 
   return functionEventMap;
