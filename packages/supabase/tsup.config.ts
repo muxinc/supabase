@@ -44,7 +44,7 @@ export default defineConfig([
     platform: 'neutral',
     outDir: 'dist',
     outExtension: () => ({ js: '.js' }),
-    external: ['@supabase/supabase-js', 'toml', '@mux/mux-node'],
+    external: [/@supabase/, /@mux/, /toml/],
     esbuildOptions(options) {
       options.define = {
         ...options.define,
