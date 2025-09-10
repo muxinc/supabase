@@ -116,10 +116,10 @@ export async function queueWorkflowsForEvent(
 ): Promise<Response> {
   try {
     const mux = new Mux({
-      tokenId: Deno.env.get("MUX_TOKEN_ID"),
-      tokenSecret: Deno.env.get("MUX_TOKEN_SECRET"),
-      webhookSecret: Deno.env.get("MUX_WEBHOOK_SECRET"),
-    })
+      tokenId: Deno.env.get('MUX_TOKEN_ID'),
+      tokenSecret: Deno.env.get('MUX_TOKEN_SECRET'),
+      webhookSecret: Deno.env.get('MUX_WEBHOOK_SECRET'),
+    });
     const event = mux.webhooks.unwrap(payload, headers);
     console.log('Received Mux webhook:', event.type);
 

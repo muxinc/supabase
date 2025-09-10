@@ -4,7 +4,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
   },
-  format: ['cjs'],
+  format: ['cjs', 'esm'],
   dts: false,
   splitting: false,
   sourcemap: false,
@@ -14,7 +14,7 @@ export default defineConfig({
   target: 'node18',
   platform: 'node',
   outDir: 'dist',
-  outExtension: () => ({ js: '.cjs' }),
+  outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
   banner: {
     js: '#!/usr/bin/env node',
   },

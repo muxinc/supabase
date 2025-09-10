@@ -1,11 +1,6 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { MuxSync } from '@mux/sync-engine'
-import { Workflows } from '@mux/supabase'
+import { MuxSync } from 'npm:@mux/sync-engine'
+import { queueWorkflowsForEvent } from '@mux/supabase'
 
 // Load secrets from environment variables
 const databaseUrl = Deno.env.get('SUPABASE_DB_URL') || 'postgresql://your-database-url'
@@ -41,6 +36,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.text()
     await muxSync.processWebhook(body, Object.fromEntries(req.headers.entries()))
+    await queueWorkflowsForEvent(body, Object.fromEntries(req.headers.entries()))
 
     return new Response(
       JSON.stringify({ status: 'success' }),

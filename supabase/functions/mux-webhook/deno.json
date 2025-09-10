@@ -1,3 +1,9 @@
 {
-  "imports": {}
+  "imports": {
+    "@mux/supabase": "npm:@mux/supabase/deno.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@std/toml": "jsr:@std/toml",
+    "@mux/mux-node": "npm:@mux/mux-node",
+    "@mux/mux-node/core": "npm:@mux/mux-node/core"
+  }
 }

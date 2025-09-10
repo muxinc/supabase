@@ -191,8 +191,6 @@ export class MuxSync {
           break;
       }
       this.logger.info(`Successfully processed webhook ${event.type}`);
-      const resp = await queueWorkflowsForEvent(event);
-      this.logger.info(`Completed workflow queing ${resp}`);
     } catch (error) {
       this.logger.error(
         error as Error,
