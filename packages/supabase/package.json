@@ -1,6 +1,6 @@
 {
   "name": "@mux/supabase",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
@@ -19,7 +19,7 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./deno": "./deno.ts",
+    "./deno": "./dist/deno.js",
     "./package.json": "./package.json"
   },
   "engines": {
@@ -55,8 +55,7 @@
   "files": [
     "dist/index.cjs",
     "dist/index.js",
-    "deno.ts",
-    "src/workflows"
+    "dist/deno.js"
   ],
   "dependencies": {
     "@mux/sync-engine": "^0.0.1",
