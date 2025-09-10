@@ -10,10 +10,7 @@ import packageJson from '../../package.json';
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
 ].replace(/^\^/, '');
-const muxSupabaseVersion = packageJson.dependencies['@mux/supabase'].replace(
-  /^\^/,
-  ''
-);
+const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
 
 interface InitAnswers {

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { parse as parseToml } from '@std/toml';
+import { parse as parseToml } from 'toml';
 import { HeadersLike } from '@mux/mux-node/core';
 import { Mux } from '@mux/mux-node';
 
