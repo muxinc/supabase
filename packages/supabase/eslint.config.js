@@ -41,6 +41,16 @@ module.exports = [
       'prettier/prettier': 'error',
     },
   },
+  {
+    files: [
+      'src/**',
+    ],
+    languageOptions: {
+      globals: {
+        Deno: 'readonly',
+      },
+    },
+  },
   prettierConfig,
   {
     ignores: ['dist/', 'node_modules/'],
