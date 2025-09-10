@@ -88,7 +88,9 @@ describe('processWebhook', () => {
     );
     expect(eventResult.rows).toHaveLength(1);
     expect(eventResult.rows[0].type).toBe('video.asset.ready');
-    expect(eventResult.rows[0].raw_body).toEqual(mockWebhookEvents.assetReady.data);
+    expect(eventResult.rows[0].raw_body).toEqual(
+      mockWebhookEvents.assetReady.data
+    );
     expect(eventResult.rows[0].headers).toEqual(headers);
 
     // Verify asset was upserted

@@ -1,6 +1,9 @@
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import packageJson from '../package.json';
+import { queueWorkflowsForEvent } from './workflows/index.ts';
+
+export { queueWorkflowsForEvent };
 
 const program = new Command();
 

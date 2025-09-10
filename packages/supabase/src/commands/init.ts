@@ -10,6 +10,10 @@ import packageJson from '../../package.json';
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
 ].replace(/^\^/, '');
+const muxSupabaseVersion = packageJson.dependencies['@mux/supabase'].replace(
+  /^\^/,
+  ''
+);
 const supabaseDir = 'supabase';
 
 interface InitAnswers {
@@ -87,6 +91,7 @@ function createMuxWebhookFunction(muxWebhookDir: string): void {
 
   const functionCode = `import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { MuxSync } from 'npm:@mux/sync-engine@${muxSyncEngineVersion}'
+import { queueWorkflowsForEvent } from 'npm:@mux/supabase@${muxSupabaseVersion}'
 
 // Load secrets from environment variables
 const databaseUrl = Deno.env.get('SUPABASE_DB_URL') || 'postgresql://your-database-url'
@@ -112,9 +117,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
-      { 
-        status: 405, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   }
@@ -122,12 +127,13 @@ Deno.serve(async (req) => {
   try {
     const body = await req.text()
     await muxSync.processWebhook(body, Object.fromEntries(req.headers.entries()))
+    await queueWorkflowsForEvent(body, Object.fromEntries(req.headers.entries()))
 
     return new Response(
       JSON.stringify({ status: 'success' }),
-      { 
-        status: 202, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   } catch (error) {
@@ -135,9 +141,9 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   }
