@@ -4,6 +4,7 @@ import { muxAssetsSchema } from './schemas/mux_assets';
 import { muxLiveStreamsSchema } from './schemas/mux_live_streams';
 import { muxUploadsSchema } from './schemas/mux_uploads';
 import { muxWebhookEventsSchema } from './schemas/mux_webhook_events';
+import { queueWorkflowsForEvent } from './workflows';
 import {
   MuxSyncConfig,
   Sync,
@@ -191,6 +192,8 @@ export class MuxSync {
           break;
       }
       this.logger.info(`Successfully processed webhook ${event.type}`);
+      const resp = await queueWorkflowsForEvent(event);
+      this.logger.info(`Completed workflow queing ${resp}`);
     } catch (error) {
       this.logger.error(
         error as Error,

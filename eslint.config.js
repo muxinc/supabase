@@ -43,7 +43,11 @@ export default [
     },
   },
   {
-    files: ['**/webhook-handler.ts', 'supabase/functions/**/*.ts'],
+    files: [
+      '**/webhook-handler.ts',
+      'supabase/functions/**/*.ts',
+      'packages/sync-engine/src/**',
+    ],
     languageOptions: {
       parser: typescriptParser,
       globals: {
