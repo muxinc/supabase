@@ -112,9 +112,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
-      { 
-        status: 405, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   }
@@ -125,9 +125,9 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ status: 'success' }),
-      { 
-        status: 202, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   } catch (error) {
@@ -135,9 +135,9 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       }
     )
   }
