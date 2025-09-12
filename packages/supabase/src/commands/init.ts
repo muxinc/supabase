@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
-import pino from 'pino';
 import { runMigrations } from '@mux/sync-engine';
 import packageJson from '../../package.json';
 
@@ -309,9 +308,7 @@ async function runDatabaseMigrations(databaseUrl: string): Promise<void> {
   const migrationSpinner = ora(
     'Running database migrations. Creating tables under "mux" schema...'
   ).start();
-  const logger = pino({
-    level: 'info',
-  });
+  const logger = console;
 
   try {
     await runMigrations({
