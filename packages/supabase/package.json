@@ -1,6 +1,6 @@
 {
   "name": "@mux/supabase",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
@@ -15,6 +15,7 @@
   "module": "./dist/index.js",
   "exports": {
     ".": {
+      "deno": "./dist/deno.js",
       "require": "./dist/index.cjs",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -31,7 +32,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "build": "tsup && node rewrite-deno-imports.js",
+    "build": "tsup",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
@@ -58,7 +59,9 @@
     "dist/deno.js"
   ],
   "dependencies": {
+    "@mux/mux-node": "^12.7.0",
     "@mux/sync-engine": "^0.0.1",
+    "@supabase/supabase-js": "^2.57.4",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",
     "inquirer": "^12.9.4",
