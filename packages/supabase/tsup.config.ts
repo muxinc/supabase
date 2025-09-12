@@ -30,9 +30,7 @@ export default defineConfig([
   },
   // Deno-specific build
   {
-    entry: {
-      deno: 'deno.ts',
-    },
+    entry: { deno: 'deno.ts' },
     format: ['esm'],
     dts: false,
     splitting: false,
@@ -44,12 +42,16 @@ export default defineConfig([
     platform: 'neutral',
     outDir: 'dist',
     outExtension: () => ({ js: '.js' }),
-    external: [/@supabase/, /@mux/, /toml/],
+    external: [
+      /^node:/, /^npm:/, // Keep node: and npm: imports external (after plugin rewrites)
+      // Packages that should be external for Deno
+      '@supabase/supabase-js',
+      '@mux/mux-node',
+      'toml',
+    ],
+    noExternal: [], // Override any noExternal from base config
     esbuildOptions(options) {
-      options.define = {
-        ...options.define,
-        'process.env.NODE_ENV': '"production"',
-      };
+      options.define = { ...options.define, 'process.env.NODE_ENV': '"production"' };
     },
   },
 ]);
