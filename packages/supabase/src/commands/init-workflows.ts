@@ -209,14 +209,42 @@ SELECT cron.schedule(
     },
   ];
 
+  let createdCount = 0;
+  let skippedCount = 0;
+
   for (const migration of migrations) {
+    const existingFiles = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => file.endsWith(`_${migration.name}.sql`));
+
+    if (existingFiles.length > 0) {
+      spinner.warn(`Migration already exists, skipping: ${existingFiles[0]}`);
+      skippedCount++;
+      continue;
+    }
+
     const filename = `${generateUniqueTimestamp()}_${migration.name}.sql`;
     const fullPath = path.join(migrationsDir, filename);
     fs.writeFileSync(fullPath, migration.content, 'utf-8');
     spinner.info(`Created migration: ${filename}`);
+    createdCount++;
   }
 
-  spinner.succeed('AI Workflows migrations files created successfully');
+  if (createdCount > 0 && skippedCount > 0) {
+    spinner.succeed(
+      `AI Workflows migrations completed: ${createdCount} created, ${skippedCount} skipped`
+    );
+  } else if (createdCount > 0) {
+    spinner.succeed(
+      `AI Workflows migrations files created successfully (${createdCount} files)`
+    );
+  } else if (skippedCount > 0) {
+    spinner.succeed(
+      `All AI Workflows migrations already exist (${skippedCount} files skipped)`
+    );
+  } else {
+    spinner.succeed('AI Workflows migrations check completed');
+  }
 }
 
 function displayNextSteps(): void {
