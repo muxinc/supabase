@@ -1,16 +1,109 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
 import packageJson from '../../package.json';
 import dotenv from 'dotenv';
-import { checkIfSupabaseDirExists } from './utils';
+import { checkIfSupabaseDirExists, createMigrationFiles } from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
 ].replace(/^\^/, '');
 const supabaseDir = 'supabase';
+
+const migrations = [
+  {
+    name: 'mux_enable_pgmq',
+    content: `-- Enable the pgmq extension for message queues
+CREATE EXTENSION IF NOT EXISTS pgmq;
+
+SELECT pgmq.create('workflow_messages');
+
+ALTER TABLE pgmq.q_workflow_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE SCHEMA if not exists pgmq_public;
+-- 4) Grants for API roles
+grant usage on schema pgmq_public to anon, authenticated, service_role;
+grant execute on all functions in schema pgmq_public to anon, authenticated, service_role;
+-- GRANT USAGE ON SCHEMA pgmq_public TO anon, authenticated, service_role;
+-- GRANT ALL ON ALL TABLES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
+-- GRANT ALL ON ALL ROUTINES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
+-- GRANT ALL ON ALL SEQUENCES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+
+alter role authenticator
+set pgrst.db_schemas = 'public,graphql_public,pgmq_public';
+notify pgrst, 'reload config';
+notify pgrst, 'reload schema';`,
+  },
+  {
+    name: 'mux_expose_pgmq_functions',
+    content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
+returns bigint
+language sql
+security definer
+as $$
+select pgmq.send(queue_name => queue_name, msg => message);
+$$;
+
+create or replace function pgmq_public.read(queue_name text, sleep_seconds integer default 30, n integer default 1)
+returns setof pgmq.message_record
+language sql
+security definer
+as $$
+select * from pgmq.read(queue_name => queue_name, vt => sleep_seconds, qty => n);
+$$;
+
+create or replace function pgmq_public.pop(queue_name text)
+returns setof pgmq.message_record
+language sql
+security definer
+as $$
+select * from pgmq.pop(queue_name => queue_name);
+$$;
+
+create or replace function pgmq_public.delete(queue_name text, msg_id bigint)
+returns boolean
+language sql
+security definer
+as $$
+select pgmq.delete(queue_name => queue_name, msg_id => msg_id);
+$$;
+
+create or replace function pgmq_public.archive(queue_name text, msg_id bigint)
+returns boolean
+language sql
+security definer
+as $$
+select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
+$$;`,
+  },
+  {
+    name: 'mux_setup_cron_job',
+    content: `-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Create the cron job
+SELECT cron.schedule(
+'process-queue-cron',
+'10 seconds', -- Every 10s
+$$
+SELECT net.http_post(
+  url:=(select decrypted_secret from vault.decrypted_secrets where name = 'supabase_url') || '/functions/v1/process-queue-cron',
+  headers:=jsonb_build_object(
+      'Content-type', 'application/json',
+      'Authorization', 'Bearer: ' || (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+  ),
+  body := jsonb_build_object('triggered_by', 'cron')
+);
+select * from net._http_response;
+$$
+);`,
+  },
+];
 
 async function shouldOverwriteProcessQueueCron(
   processQueueCronDir: string
@@ -94,159 +187,6 @@ async function setupProcessQueueCron(): Promise<void> {
   }
 }
 
-export async function createMigrationFiles(): Promise<void> {
-  const spinner = ora('\nCreating AI Workflows migration files...\n').start();
-
-  const migrationsDir = path.join(supabaseDir, 'migrations');
-
-  if (!fs.existsSync(migrationsDir)) {
-    fs.mkdirSync(migrationsDir, { recursive: true });
-  }
-
-  let timestampCounter = 0;
-  const baseTimestamp = new Date()
-    .toISOString()
-    .replace(/[-:T.Z]/g, '')
-    .slice(0, 14);
-
-  const generateUniqueTimestamp = () => {
-    const timestamp = baseTimestamp + String(timestampCounter).padStart(2, '0');
-    timestampCounter++;
-    return timestamp;
-  };
-
-  const migrations: { name: string; content: string }[] = [
-    {
-      name: 'mux_enable_pgmq',
-      content: `-- Enable the pgmq extension for message queues
-CREATE EXTENSION IF NOT EXISTS pgmq;
-
-SELECT pgmq.create('workflow_messages');
-
-ALTER TABLE pgmq.q_workflow_messages ENABLE ROW LEVEL SECURITY;
-
-CREATE SCHEMA if not exists pgmq_public;
--- 4) Grants for API roles
-grant usage on schema pgmq_public to anon, authenticated, service_role;
-grant execute on all functions in schema pgmq_public to anon, authenticated, service_role;
--- GRANT USAGE ON SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL TABLES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL ROUTINES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL SEQUENCES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON TABLES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
-
-alter role authenticator
-set pgrst.db_schemas = 'public,graphql_public,pgmq_public';
-notify pgrst, 'reload config';
-notify pgrst, 'reload schema';`,
-    },
-    {
-      name: 'mux_expose_pgmq_functions',
-      content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
-returns bigint
-language sql
-security definer
-as $$
-  select pgmq.send(queue_name => queue_name, msg => message);
-$$;
-
-create or replace function pgmq_public.read(queue_name text, sleep_seconds integer default 30, n integer default 1)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-  select * from pgmq.read(queue_name => queue_name, vt => sleep_seconds, qty => n);
-$$;
-
-create or replace function pgmq_public.pop(queue_name text)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-  select * from pgmq.pop(queue_name => queue_name);
-$$;
-
-create or replace function pgmq_public.delete(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-  select pgmq.delete(queue_name => queue_name, msg_id => msg_id);
-$$;
-
-create or replace function pgmq_public.archive(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-  select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
-$$;`,
-    },
-    {
-      name: 'mux_setup_cron_job',
-      content: `-- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-
--- Create the cron job
-SELECT cron.schedule(
-  'process-queue-cron',
-  '10 seconds', -- Every 10s
-  $$
-  SELECT net.http_post(
-    url:=(select decrypted_secret from vault.decrypted_secrets where name = 'supabase_url') || '/functions/v1/process-queue-cron',
-    headers:=jsonb_build_object(
-        'Content-type', 'application/json',
-        'Authorization', 'Bearer: ' || (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
-    ),
-    body := jsonb_build_object('triggered_by', 'cron')
-  );
-  select * from net._http_response;
-  $$
-);`,
-    },
-  ];
-
-  let createdCount = 0;
-  let skippedCount = 0;
-
-  for (const migration of migrations) {
-    const existingFiles = fs
-      .readdirSync(migrationsDir)
-      .filter((file) => file.endsWith(`_${migration.name}.sql`));
-
-    if (existingFiles.length > 0) {
-      spinner.warn(`Migration already exists, skipping: ${existingFiles[0]}`);
-      skippedCount++;
-      continue;
-    }
-
-    const filename = `${generateUniqueTimestamp()}_${migration.name}.sql`;
-    const fullPath = path.join(migrationsDir, filename);
-    fs.writeFileSync(fullPath, migration.content, 'utf-8');
-    spinner.info(`Created migration: ${filename}`);
-    createdCount++;
-  }
-
-  if (createdCount > 0 && skippedCount > 0) {
-    spinner.succeed(
-      `AI Workflows migrations completed: ${createdCount} created, ${skippedCount} skipped`
-    );
-  } else if (createdCount > 0) {
-    spinner.succeed(
-      `AI Workflows migrations files created successfully (${createdCount} files)`
-    );
-  } else if (skippedCount > 0) {
-    spinner.succeed(
-      `All AI Workflows migrations already exist (${skippedCount} files skipped)`
-    );
-  } else {
-    spinner.succeed('AI Workflows migrations check completed');
-  }
-}
-
 function displayNextSteps(): void {
   console.log(chalk.blue.bold('\n🎉 AI Workflows setup completed!'));
   console.log(chalk.yellow('\nNext steps:'));
@@ -288,7 +228,7 @@ async function setupDatabase(): Promise<void> {
     process.exit(1);
   }
 
-  await createMigrationFiles();
+  await createMigrationFiles(migrations);
 }
 
 export async function initWorkflowsCommand(): Promise<void> {
