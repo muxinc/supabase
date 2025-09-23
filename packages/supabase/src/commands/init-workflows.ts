@@ -117,7 +117,7 @@ export async function createMigrationFiles(): Promise<void> {
 
   const migrations: { name: string; content: string }[] = [
     {
-      name: 'enable_pgmq',
+      name: 'mux_enable_pgmq',
       content: `-- Enable the pgmq extension for message queues
 CREATE EXTENSION IF NOT EXISTS pgmq;
 
@@ -143,7 +143,7 @@ notify pgrst, 'reload config';
 notify pgrst, 'reload schema';`,
     },
     {
-      name: 'expose_pgmq_functions',
+      name: 'mux_expose_pgmq_functions',
       content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
 returns bigint
 language sql
@@ -185,7 +185,7 @@ as $$
 $$;`,
     },
     {
-      name: 'setup_cron_job',
+      name: 'mux_setup_cron_job',
       content: `-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
