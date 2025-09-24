@@ -2,8 +2,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Single service client for both database operations and function invocations
 const supabase = createClient(
-  Deno.env.get('AI_WORKFLOWS_SUPABASE_URL')!,
-  Deno.env.get('AI_WORKFLOWS_SUPABASE_SERVICE_ROLE_KEY')!
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 // Type definition for queue messages

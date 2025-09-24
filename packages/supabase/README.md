@@ -16,7 +16,11 @@
 
 Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init).
 
-You should have a local .env file with a `SUPABASE_DB_URL` variable. If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+You should have a local .env file with
+
+- `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- `SUPABASE_SERVICE_ROLE_KEY` After you run `supabase start` locally, this will be printed to the terminal as `service_role_key`, grab that and put it in .env
+- `SUPABASE_URL` If you are developing locally this is: `http://127.0.0.1:54321`
 
 **Setup**
 

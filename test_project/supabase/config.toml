@@ -323,3 +323,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.mux-webhook]
 verify_jwt = false
+
+[db.vault]
+service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"
+supabase_url = "env(SUPABASE_URL)"

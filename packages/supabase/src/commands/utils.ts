@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import fs from 'node:fs';
 import ora from 'ora';
 import path from 'node:path';
+import inquirer from 'inquirer';
+import dotenv from 'dotenv';
 
 const supabaseDir = 'supabase';
 
@@ -273,4 +275,139 @@ export async function createMigrationFiles(
   } else {
     spinner.succeed('Migrations check completed');
   }
+}
+
+export async function promptForDatabaseUrl(): Promise<string> {
+  const databaseUrl = process.env.SUPABASE_DB_URL;
+
+  if (databaseUrl) {
+    console.log(chalk.green('✅ Using SUPABASE_DB_URL from environment'));
+    return databaseUrl;
+  }
+
+  console.log(chalk.yellow('No database URL found in environment variables.'));
+  console.log(chalk.blue('Please set SUPABASE_DB_URL environment variable.'));
+  console.log(
+    chalk.gray(
+      'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
+    )
+  );
+  process.exit(1);
+}
+
+export function createFunctionsEnvFile(): void {
+  const functionsEnvPath = path.join(supabaseDir, 'functions', '.env');
+  if (!fs.existsSync(functionsEnvPath)) {
+    const envContent = `# Used to develop Edge Functions locally.\n# Configure the secrets required by the mux-webhook function.\nMUX_TOKEN_ID=your-mux-token-id\nMUX_TOKEN_SECRET=your-mux-token-secret\nMUX_WEBHOOK_SECRET=your-mux-webhook-secret\n`;
+    fs.writeFileSync(functionsEnvPath, envContent);
+    console.log(chalk.green('✅ Created supabase/functions/.env'));
+  } else {
+    console.log(
+      chalk.gray('supabase/functions/.env already exists. Skipping creation.')
+    );
+  }
+}
+
+export async function shouldOverwriteFunction(
+  functionDir: string,
+  functionName: string
+): Promise<boolean> {
+  if (!fs.existsSync(functionDir)) {
+    return true;
+  }
+
+  console.log(
+    chalk.yellow(`\n⚠️  Warning: ${functionName} function already exists!`)
+  );
+
+  const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([
+    {
+      type: 'confirm',
+      name: 'overwrite',
+      message: `Do you want to overwrite the existing ${functionName} function?`,
+      default: false,
+    },
+  ]);
+
+  if (!overwrite) {
+    console.log(chalk.blue('Files will not be modified.'));
+    return false;
+  }
+
+  console.log(chalk.yellow('Proceeding with overwrite...'));
+  return true;
+}
+
+export async function runSupabaseMigrations(): Promise<void> {
+  const migrationSpinner = ora('Running supabase migration up...').start();
+  try {
+    const { spawn } = require('node:child_process');
+
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill('SIGTERM');
+        reject(new Error('Timeout: supabase migration up took too long'));
+      }, 60000); // 60 second timeout
+
+      const child = spawn('supabase', ['migration', 'up'], {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+        env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' },
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(
+            new Error(
+              `supabase migration up failed (code ${code}): ${stderr || stdout}`
+            )
+          );
+        }
+      });
+
+      child.on('error', (error) => {
+        clearTimeout(timeout);
+        reject(new Error(`Failed to spawn supabase CLI: ${error.message}`));
+      });
+    });
+
+    migrationSpinner.succeed('✅ Database migrations applied successfully!');
+  } catch (error) {
+    migrationSpinner.fail('❌ Failed to apply migrations');
+    console.error(
+      chalk.red('Migration error:'),
+      error instanceof Error ? error.message : String(error)
+    );
+    console.log(chalk.yellow('💡 You can manually run: supabase migration up'));
+    throw error;
+  }
+}
+
+export async function setupDatabaseWithEnvLoading(): Promise<void> {
+  // Load environment variables from various .env file locations
+  const envPaths = ['.env', 'supabase/.env', 'supabase/functions/.env'];
+
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      console.log(chalk.gray(`Loading environment variables from ${envPath}`));
+      dotenv.config({ path: envPath });
+      break;
+    }
+  }
+
+  await promptForDatabaseUrl();
 }

@@ -1,17 +1,24 @@
-import inquirer from 'inquirer';
 import chalk from 'chalk';
 import fs from 'node:fs';
 import path from 'node:path';
 import packageJson from '../../package.json';
-import dotenv from 'dotenv';
-import { checkIfSupabaseDirExists, createMigrationFiles } from './utils';
+import {
+  checkIfSupabaseDirExists,
+  createMigrationFiles,
+  createFunctionsEnvFile,
+  shouldOverwriteFunction,
+  runSupabaseMigrations,
+  setupDatabaseWithEnvLoading,
+} from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
 ].replace(/^\^/, '');
+const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
 
-const migrations = [
+function getWorkflowMigrations(): { name: string; content: string }[] {
+  return [
   {
     name: 'mux_enable_pgmq',
     content: `-- Enable the pgmq extension for message queues
@@ -103,44 +110,18 @@ select * from net._http_response;
 $$
 );`,
   },
-];
-
-async function shouldOverwriteProcessQueueCron(
-  processQueueCronDir: string
-): Promise<boolean> {
-  if (!fs.existsSync(processQueueCronDir)) {
-    return true;
-  }
-
-  console.log(
-    chalk.yellow('\n⚠️  Warning: process-queue-cron function already exists!')
-  );
-
-  const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([
-    {
-      type: 'confirm',
-      name: 'overwrite',
-      message:
-        'Do you want to overwrite the existing process-queue-cron function?',
-      default: false,
-    },
-  ]);
-
-  if (!overwrite) {
-    console.log(chalk.blue('Files will not be modified.'));
-    return false;
-  }
-
-  console.log(chalk.yellow('Proceeding with overwrite...'));
-  return true;
+  ];
 }
 
 function createProcessQueueCronFunction(processQueueCronDir: string): void {
   // Create directories
   fs.mkdirSync(processQueueCronDir, { recursive: true });
 
+  // Create supabase/functions/.env if it doesn't exist
+  createFunctionsEnvFile();
+
   const functionCode = `import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { processQueueCron } from '@mux/supabase';
+import { processQueueCron } from 'npm:@mux/supabase@${muxSupabaseVersion}'
 
 Deno.serve(async (req) => {
   await processQueueCron(req);
@@ -157,6 +138,7 @@ Deno.serve(async (req) => {
   const denoConfig = {
     imports: {
       '@mux/sync-engine': `npm:@mux/sync-engine@${muxSyncEngineVersion}`,
+      '@mux/supabase': `npm:@mux/supabase@${muxSupabaseVersion}`,
     },
   };
 
@@ -172,6 +154,133 @@ Deno.serve(async (req) => {
   );
 }
 
+function updateSupabaseConfigForVault(): void {
+  const configPath = path.join(supabaseDir, 'config.toml');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      chalk.yellow('⚠️  config.toml not found in supabase directory')
+    );
+    return;
+  }
+
+  let configContent = fs.readFileSync(configPath, 'utf-8');
+
+  // Check if [db.vault] section already exists
+  const vaultSectionRegex = /^\[db\.vault\]\s*$/m;
+  const secretKeyRegex = /^\s*secret_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
+  const supabaseUrlRegex = /^\s*supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
+
+  const hasVaultSection = vaultSectionRegex.test(configContent);
+  let hasSecretKey = false;
+  let hasSupabaseUrl = false;
+
+  if (hasVaultSection) {
+    // Check if the required keys exist in the vault section
+    const lines = configContent.split('\n');
+    let inVaultSection = false;
+
+    for (const line of lines) {
+      if (line.match(vaultSectionRegex)) {
+        inVaultSection = true;
+        continue;
+      }
+
+      if (inVaultSection) {
+        // If we hit another section, we're done with vault section
+        if (line.match(/^\[.*\]$/)) {
+          break;
+        }
+
+        if (line.match(secretKeyRegex)) {
+          hasSecretKey = true;
+        }
+        if (line.match(supabaseUrlRegex)) {
+          hasSupabaseUrl = true;
+        }
+      }
+    }
+  }
+
+  // If everything is already configured, skip
+  if (hasVaultSection && hasSecretKey && hasSupabaseUrl) {
+    console.log(
+      chalk.gray(
+        'config.toml already has [db.vault] section with required secrets'
+      )
+    );
+    return;
+  }
+
+  // Build the configuration to add
+  let configToAdd = '';
+
+  if (!hasVaultSection) {
+    // Add the entire section
+    configToAdd = '\n[db.vault]\nsecret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nsupabase_url = "env(SUPABASE_URL)"\n';
+    configContent += configToAdd;
+  } else {
+    // Add missing keys to existing section
+    const lines = configContent.split('\n');
+    const newLines = [];
+    let inVaultSection = false;
+    let addedKeys = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      newLines.push(line);
+
+      if (line.match(vaultSectionRegex)) {
+        inVaultSection = true;
+        continue;
+      }
+
+      if (inVaultSection && !addedKeys) {
+        // If we hit another section or end of file, add missing keys before it
+        if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
+          const keysToAdd = [];
+          if (!hasSecretKey) {
+            keysToAdd.push('secret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"');
+          }
+          if (!hasSupabaseUrl) {
+            keysToAdd.push('supabase_url = "env(SUPABASE_URL)"');
+          }
+
+          if (keysToAdd.length > 0) {
+            if (line.match(/^\[.*\]$/)) {
+              // Insert before the new section
+              newLines.splice(-1, 0, ...keysToAdd);
+            } else {
+              // Add at the end
+              newLines.push(...keysToAdd);
+            }
+          }
+          addedKeys = true;
+          inVaultSection = false;
+        }
+      }
+    }
+
+    configContent = newLines.join('\n');
+  }
+
+  fs.writeFileSync(configPath, configContent);
+
+  const addedItems = [];
+  if (!hasVaultSection || !hasSecretKey) {
+    addedItems.push('secret_key');
+  }
+  if (!hasVaultSection || !hasSupabaseUrl) {
+    addedItems.push('supabase_url');
+  }
+
+  console.log(
+    chalk.green(
+      `✅ Added ${addedItems.join(' and ')} to [db.vault] in config.toml`
+    )
+  );
+}
+
 async function setupProcessQueueCron(): Promise<void> {
   const processQueueCronDir = path.join(
     supabaseDir,
@@ -179,63 +288,65 @@ async function setupProcessQueueCron(): Promise<void> {
     'process-queue-cron'
   );
 
-  const shouldCreate =
-    await shouldOverwriteProcessQueueCron(processQueueCronDir);
+  const shouldCreate = await shouldOverwriteFunction(processQueueCronDir, 'process-queue-cron');
 
   if (shouldCreate) {
     createProcessQueueCronFunction(processQueueCronDir);
+    updateSupabaseConfigForVault();
   }
 }
 
 function displayNextSteps(): void {
-  console.log(chalk.blue.bold('\n🎉 AI Workflows setup completed!'));
+  console.log(chalk.blue.bold('\n🎉 AI Workflows setup completed successfully!'));
   console.log(chalk.yellow('\nNext steps:'));
+  console.log('1. Set the required environment variables:');
+  console.log('   - SUPABASE_URL: Your Supabase project URL');
+  console.log('   - SUPABASE_SERVICE_ROLE_KEY: Your Supabase service role key');
   console.log(
-    '1. Run migrations on production: ' + chalk.cyan('supabase migration up')
+    '2. Deploy the Edge Function: ' + chalk.cyan('supabase functions deploy process-queue-cron')
+  );
+  console.log('3. Verify the setup:');
+  console.log('   - Check that pgmq extension is enabled');
+  console.log('   - Verify "workflow_messages" queue exists');
+  console.log('   - Confirm cron job is scheduled and running');
+  console.log(
+    chalk.gray(
+      '\n💡 Tip: The vault secrets are configured to read from environment variables'
+    )
   );
   console.log(
-    '2. Deploy the Edge Function: ' +
-      chalk.cyan('supabase functions deploy process-queue-cron')
+    chalk.gray(
+      '   Make sure to set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment'
+    )
   );
   console.log(
-    '3. Verify migrations applied (pgmq + cron): queue "workflow_messages" and cron job exist.'
+    chalk.gray(
+      '   For local development, you can add them to your .env file'
+    )
   );
 }
 
 async function setupDatabase(): Promise<void> {
-  const functionsEnvPath = path.join(
-    process.cwd(),
-    'supabase',
-    'functions',
-    '.env'
+  await setupDatabaseWithEnvLoading();
+
+  console.log(
+    chalk.blue('📦 Getting workflow migration files...')
   );
-  if (fs.existsSync(functionsEnvPath)) {
-    dotenv.config({ path: functionsEnvPath });
-  }
+  const migrations = getWorkflowMigrations();
 
-  const databaseUrl = process.env.SUPABASE_DB_URL;
-
-  if (!databaseUrl) {
-    console.log(
-      chalk.yellow('No database URL found in environment variables.')
-    );
-    console.log(chalk.blue('Please set SUPABASE_DB_URL environment variable.'));
-    console.log(
-      chalk.gray(
-        'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
-      )
-    );
-    process.exit(1);
-  }
-
+  console.log(chalk.blue(`Found ${migrations.length} workflow migration files`));
   await createMigrationFiles(migrations);
+
+  console.log(chalk.green('✅ Migration files created!'));
+
+  await runSupabaseMigrations();
 }
 
 export async function initWorkflowsCommand(): Promise<void> {
-  console.log(chalk.blue.bold('🚀 Mux AI Workflows on Supabase'));
+  console.log(chalk.blue.bold('🚀 Mux AI Workflows - Supabase Initialization'));
   console.log(
     chalk.gray(
-      'This will set up Supabase queues, a new Edge Function, and run migrations.\n'
+      'This will run workflow migrations in your Supabase database and create a process-queue-cron Edge Function.\n'
     )
   );
 
