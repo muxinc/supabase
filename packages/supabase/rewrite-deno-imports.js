@@ -10,10 +10,35 @@ if (fs.existsSync(denoJsPath)) {
   let contents = fs.readFileSync(denoJsPath, 'utf-8');
 
   const nodeBuiltins = new Set([
-    'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram', 'dns',
-    'domain', 'events', 'fs', 'http', 'https', 'net', 'os', 'path', 'punycode',
-    'querystring', 'readline', 'repl', 'stream', 'string_decoder', 'sys',
-    'timers', 'tls', 'tty', 'url', 'util', 'vm', 'zlib'
+    'assert',
+    'buffer',
+    'child_process',
+    'cluster',
+    'crypto',
+    'dgram',
+    'dns',
+    'domain',
+    'events',
+    'fs',
+    'http',
+    'https',
+    'net',
+    'os',
+    'path',
+    'punycode',
+    'querystring',
+    'readline',
+    'repl',
+    'stream',
+    'string_decoder',
+    'sys',
+    'timers',
+    'tls',
+    'tty',
+    'url',
+    'util',
+    'vm',
+    'zlib',
   ]);
 
   // Rewrite import statements (exclude already prefixed ones)

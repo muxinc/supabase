@@ -5,7 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import packageJson from '../../package.json';
-import { checkIfSupabaseDirExists, getMigrationFilesFromSyncEngine, createMigrationFiles } from './utils';
+import {
+  checkIfSupabaseDirExists,
+  getMigrationFilesFromSyncEngine,
+  createMigrationFiles,
+} from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -25,12 +29,8 @@ async function promptForDatabaseUrl(): Promise<string> {
     return databaseUrl;
   }
 
-  console.log(
-    chalk.yellow('No database URL found in environment variables.')
-  );
-  console.log(
-    chalk.blue('Please set SUPABASE_DB_URL environment variable.')
-  );
+  console.log(chalk.yellow('No database URL found in environment variables.'));
+  console.log(chalk.blue('Please set SUPABASE_DB_URL environment variable.'));
   console.log(
     chalk.gray(
       'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
@@ -285,7 +285,6 @@ async function setupMuxWebhook(): Promise<void> {
   }
 }
 
-
 function displayNextSteps(): void {
   console.log(chalk.blue.bold('\n🎉 Setup completed successfully!'));
   console.log(chalk.yellow('\nNext steps:'));
@@ -314,11 +313,7 @@ function displayNextSteps(): void {
 
 async function setupDatabase(): Promise<void> {
   // Load environment variables from various .env file locations
-  const envPaths = [
-    '.env',
-    'supabase/.env',
-    'supabase/functions/.env'
-  ];
+  const envPaths = ['.env', 'supabase/.env', 'supabase/functions/.env'];
 
   for (const envPath of envPaths) {
     if (fs.existsSync(envPath)) {
@@ -330,7 +325,9 @@ async function setupDatabase(): Promise<void> {
 
   const databaseUrl = await promptForDatabaseUrl();
 
-  console.log(chalk.blue('📦 Getting migration files from @mux/sync-engine...'));
+  console.log(
+    chalk.blue('📦 Getting migration files from @mux/sync-engine...')
+  );
   const migrations = getMigrationFilesFromSyncEngine();
 
   if (migrations.length === 0) {
@@ -357,7 +354,7 @@ async function setupDatabase(): Promise<void> {
       const child = spawn('supabase', ['migration', 'up'], {
         stdio: 'pipe',
         cwd: process.cwd(),
-        env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' }
+        env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' },
       });
 
       let stdout = '';
@@ -376,7 +373,11 @@ async function setupDatabase(): Promise<void> {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(new Error(`supabase migration up failed (code ${code}): ${stderr || stdout}`));
+          reject(
+            new Error(
+              `supabase migration up failed (code ${code}): ${stderr || stdout}`
+            )
+          );
         }
       });
 
@@ -389,7 +390,10 @@ async function setupDatabase(): Promise<void> {
     migrationSpinner.succeed('✅ Database migrations applied successfully!');
   } catch (error) {
     migrationSpinner.fail('❌ Failed to apply migrations');
-    console.error(chalk.red('Migration error:'), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('Migration error:'),
+      error instanceof Error ? error.message : String(error)
+    );
     console.log(chalk.yellow('💡 You can manually run: supabase migration up'));
     throw error;
   }

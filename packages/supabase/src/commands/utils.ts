@@ -43,16 +43,22 @@ function getMigrationsPath(): string {
   }
 }
 
-export function getMigrationFilesFromSyncEngine(): { name: string; content: string }[] {
+export function getMigrationFilesFromSyncEngine(): {
+  name: string;
+  content: string;
+}[] {
   const migrationsPath = getMigrationsPath();
 
   if (!fs.existsSync(migrationsPath)) {
-    console.log(chalk.yellow(`Migrations directory not found: ${migrationsPath}`));
+    console.log(
+      chalk.yellow(`Migrations directory not found: ${migrationsPath}`)
+    );
     return [];
   }
 
-  const migrationFiles = fs.readdirSync(migrationsPath)
-    .filter(file => file.endsWith('.sql'))
+  const migrationFiles = fs
+    .readdirSync(migrationsPath)
+    .filter((file) => file.endsWith('.sql'))
     .sort();
 
   const migrations: { name: string; content: string }[] = [];
@@ -72,7 +78,9 @@ export async function createMigrationFilesWithSupabaseCli(
   migrations: { name: string; content: string }[]
 ): Promise<void> {
   const { spawn } = require('node:child_process');
-  const spinner = ora('\nCreating migration files using Supabase CLI...\n').start();
+  const spinner = ora(
+    '\nCreating migration files using Supabase CLI...\n'
+  ).start();
 
   const migrationsDir = path.join(supabaseDir, 'migrations');
 
@@ -102,13 +110,17 @@ export async function createMigrationFilesWithSupabaseCli(
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           child.kill('SIGTERM');
-          reject(new Error(`Timeout: supabase migration new ${migrationName} took too long`));
+          reject(
+            new Error(
+              `Timeout: supabase migration new ${migrationName} took too long`
+            )
+          );
         }, 30000); // 30 second timeout
 
         const child = spawn('supabase', ['migration', 'new', migrationName], {
           stdio: 'pipe',
           cwd: process.cwd(),
-          env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' }
+          env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' },
         });
 
         let stdout = '';
@@ -127,7 +139,11 @@ export async function createMigrationFilesWithSupabaseCli(
           if (code === 0) {
             resolve(stdout);
           } else {
-            reject(new Error(`Supabase CLI error (code ${code}): ${stderr || stdout}`));
+            reject(
+              new Error(
+                `Supabase CLI error (code ${code}): ${stderr || stdout}`
+              )
+            );
           }
         });
 
@@ -144,27 +160,39 @@ export async function createMigrationFilesWithSupabaseCli(
         .sort();
 
       if (newFiles.length > 0) {
-        const newFilePath = path.join(migrationsDir, newFiles[newFiles.length - 1]);
+        const newFilePath = path.join(
+          migrationsDir,
+          newFiles[newFiles.length - 1]
+        );
         // Replace the empty file contents with the actual migration content
         fs.writeFileSync(newFilePath, migration.content, 'utf-8');
         spinner.succeed(`Created migration: ${newFiles[newFiles.length - 1]}`);
         createdCount++;
       } else {
-        spinner.warn(`Could not find created migration file for: ${migration.name}`);
+        spinner.warn(
+          `Could not find created migration file for: ${migration.name}`
+        );
       }
     } catch (error) {
-      spinner.warn(`Failed to create migration ${migration.name}: ${error instanceof Error ? error.message : String(error)}`);
+      spinner.warn(
+        `Failed to create migration ${migration.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
       // Fall back to direct file creation if CLI fails
       spinner.text = `Falling back to direct file creation for: ${migration.name}`;
       try {
-        const timestamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+        const timestamp = new Date()
+          .toISOString()
+          .replace(/[-:T.Z]/g, '')
+          .slice(0, 14);
         const filename = `${timestamp}_${migration.name}.sql`;
         const fullPath = path.join(migrationsDir, filename);
         fs.writeFileSync(fullPath, migration.content, 'utf-8');
         spinner.succeed(`Created migration (fallback): ${filename}`);
         createdCount++;
       } catch (fallbackError) {
-        spinner.fail(`Failed to create migration ${migration.name} even with fallback: ${fallbackError}`);
+        spinner.fail(
+          `Failed to create migration ${migration.name} even with fallback: ${fallbackError}`
+        );
       }
     }
   }

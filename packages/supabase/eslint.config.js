@@ -42,9 +42,7 @@ module.exports = [
     },
   },
   {
-    files: [
-      'src/**',
-    ],
+    files: ['src/**'],
     languageOptions: {
       globals: {
         Deno: 'readonly',
