@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Supabase integration for Mux video platform",
   "main": "sync-mux.ts",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "sync-mux": "npx ts-node lib/sync-mux.ts",
     "dev": "supabase start",
