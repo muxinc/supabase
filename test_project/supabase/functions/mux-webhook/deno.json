@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@mux/sync-engine": "npm:@mux/sync-engine@0.0.2"
+  }
+}

@@ -16,6 +16,8 @@
 
 Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init).
 
+You should have a local .env file with a `SUPABASE_DB_URL` variable. If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+
 **Setup**
 
 Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets.
@@ -29,16 +31,6 @@ This will:
 - Create the `mux` schema and corresponding tables
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
 - Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` in the Supabase dashboard
-
-**Disable JWT auth on the webhook endpoint**
-
-- Open `supabase/config.toml`
-- Add this code to disable the JWT auth on the webhook endpoint (the Mux SDK when handling the webhook will [verify the signature](https://www.mux.com/docs/core/verify-webhook-signatures)):
-
-```toml
-[functions.mux-webhook]
-verify_jwt = false
-```
 
 Deploy the webhook:
 

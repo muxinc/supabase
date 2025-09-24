@@ -3,9 +3,9 @@ import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
-import { runMigrations } from '@mux/sync-engine';
+import dotenv from 'dotenv';
 import packageJson from '../../package.json';
-import { checkIfSupabaseDirExists } from './utils';
+import { checkIfSupabaseDirExists, getMigrationFilesFromSyncEngine, createMigrationFiles } from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -15,6 +15,28 @@ const supabaseDir = 'supabase';
 
 interface InitAnswers {
   databaseUrl: string;
+}
+
+async function promptForDatabaseUrl(): Promise<string> {
+  const databaseUrl = process.env.SUPABASE_DB_URL;
+
+  if (databaseUrl) {
+    console.log(chalk.green('✅ Using SUPABASE_DB_URL from environment'));
+    return databaseUrl;
+  }
+
+  console.log(
+    chalk.yellow('No database URL found in environment variables.')
+  );
+  console.log(
+    chalk.blue('Please set SUPABASE_DB_URL environment variable.')
+  );
+  console.log(
+    chalk.gray(
+      'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
+    )
+  );
+  process.exit(1);
 }
 
 async function shouldOverwriteMuxWebhook(
@@ -263,47 +285,6 @@ async function setupMuxWebhook(): Promise<void> {
   }
 }
 
-async function promptForDatabaseUrl(): Promise<string> {
-  const answers = await inquirer.prompt<InitAnswers>([
-    {
-      type: 'input',
-      name: 'databaseUrl',
-      message:
-        'Enter your Supabase database URL:\n' +
-        '  (Click the "Connect" button in the Supabase dashboard and use the\n' +
-        '   "Session pooler" option toward the bottom. Replace [YOUR-PASSWORD]\n' +
-        '   with the database password you configured when setting up your project)',
-      validate: (input: string) => {
-        if (!input) return 'Database URL is required';
-        if (!input.includes('postgresql://'))
-          return 'Please enter a valid PostgreSQL connection string';
-        return true;
-      },
-    },
-  ]);
-
-  return answers.databaseUrl;
-}
-
-async function runDatabaseMigrations(databaseUrl: string): Promise<void> {
-  const migrationSpinner = ora(
-    'Running database migrations. Creating tables under "mux" schema...'
-  ).start();
-  const logger = console;
-
-  try {
-    await runMigrations({
-      databaseUrl,
-      logger,
-    });
-
-    migrationSpinner.succeed('Database migrations completed successfully!');
-  } catch (error) {
-    migrationSpinner.fail('Failed to run migrations');
-    console.error(chalk.red('Migration error:'), error);
-    throw error;
-  }
-}
 
 function displayNextSteps(): void {
   console.log(chalk.blue.bold('\n🎉 Setup completed successfully!'));
@@ -332,8 +313,86 @@ function displayNextSteps(): void {
 }
 
 async function setupDatabase(): Promise<void> {
+  // Load environment variables from various .env file locations
+  const envPaths = [
+    '.env',
+    'supabase/.env',
+    'supabase/functions/.env'
+  ];
+
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      console.log(chalk.gray(`Loading environment variables from ${envPath}`));
+      dotenv.config({ path: envPath });
+      break;
+    }
+  }
+
   const databaseUrl = await promptForDatabaseUrl();
-  await runDatabaseMigrations(databaseUrl);
+
+  console.log(chalk.blue('📦 Getting migration files from @mux/sync-engine...'));
+  const migrations = getMigrationFilesFromSyncEngine();
+
+  if (migrations.length === 0) {
+    console.log(chalk.yellow('No migration files found in @mux/sync-engine'));
+    return;
+  }
+
+  console.log(chalk.blue(`Found ${migrations.length} migration files`));
+  await createMigrationFiles(migrations);
+
+  console.log(chalk.green('✅ Migration files created!'));
+
+  // Automatically run supabase migration up
+  const migrationSpinner = ora('Running supabase migration up...').start();
+  try {
+    const { spawn } = require('node:child_process');
+
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill('SIGTERM');
+        reject(new Error('Timeout: supabase migration up took too long'));
+      }, 60000); // 60 second timeout
+
+      const child = spawn('supabase', ['migration', 'up'], {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+        env: { ...process.env, SUPABASE_DISABLE_TELEMETRY: 'true' }
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`supabase migration up failed (code ${code}): ${stderr || stdout}`));
+        }
+      });
+
+      child.on('error', (error) => {
+        clearTimeout(timeout);
+        reject(new Error(`Failed to spawn supabase CLI: ${error.message}`));
+      });
+    });
+
+    migrationSpinner.succeed('✅ Database migrations applied successfully!');
+  } catch (error) {
+    migrationSpinner.fail('❌ Failed to apply migrations');
+    console.error(chalk.red('Migration error:'), error instanceof Error ? error.message : String(error));
+    console.log(chalk.yellow('💡 You can manually run: supabase migration up'));
+    throw error;
+  }
 }
 
 export async function initCommand(): Promise<void> {
