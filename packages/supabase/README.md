@@ -53,12 +53,13 @@ Go to your Mux dashboard, make sure you're in the correct environment and upload
 If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database:
 
 ```typescript
-import { createMuxSync } from '@mux/sync-engine';
+import { MuxSync } from '@mux/sync-engine';
 
-const muxSync = createMuxSync({
+const muxSync = MuxSync({
   databaseUrl: 'your-supabase-database-url',
   muxTokenId: 'your-mux-token-id',
   muxTokenSecret: 'your-mux-token-secret',
+  muxWebhookSecret: 'your-mux-webhook-secret',
 });
 
 // Backfill all data
