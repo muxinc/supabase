@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
+import { initWorkflowsCommand } from './commands/init-workflows.js';
 import packageJson from '../package.json';
 import { queueWorkflowsForEvent } from './workflows/index.ts';
 
@@ -16,5 +17,10 @@ program
   .command('init')
   .description('Initialize Mux Sync Engine with Supabase')
   .action(initCommand);
+
+program
+  .command('init-workflows')
+  .description('Sets up the AI workflows')
+  .action(initWorkflowsCommand);
 
 program.parse();

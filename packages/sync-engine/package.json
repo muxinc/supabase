@@ -1,6 +1,6 @@
 {
   "name": "@mux/sync-engine",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Mux Sync Engine to sync Mux data based on webhooks to Postgres",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -45,7 +45,8 @@
     "prepublishOnly": "npm run build",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:pagination": "node scripts/test-pagination.js"
   },
   "files": [
     "dist"

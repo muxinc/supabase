@@ -2,12 +2,12 @@ name: Sync Engine Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'packages/sync-engine/**'
       - '.github/workflows/sync-engine-test.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'packages/sync-engine/**'
       - '.github/workflows/sync-engine-test.yml'
@@ -17,48 +17,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: packages/sync-engine/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/sync-engine/package-lock.json
 
-    - name: Install dependencies
-      working-directory: packages/sync-engine
-      run: npm ci
+      - name: Install dependencies
+        working-directory: packages/sync-engine
+        run: npm ci
 
-    - name: Build package
-      working-directory: packages/sync-engine
-      run: npm run build
+      - name: Build package
+        working-directory: packages/sync-engine
+        run: npm run build
 
-    - name: Run tests
-      working-directory: packages/sync-engine
-      run: npm test -- --run
-      env:
-        CI: true
+      - name: Run tests
+        working-directory: packages/sync-engine
+        run: npm test -- --run
+        env:
+          CI: true
 
   lint:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: packages/sync-engine/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/sync-engine/package-lock.json
 
-    - name: Install dependencies
-      working-directory: packages/sync-engine
-      run: npm ci
+      - name: Install dependencies
+        working-directory: packages/sync-engine
+        run: npm ci
 
-    - name: Run linter
-      working-directory: packages/sync-engine
-      run: npm run lint
+      - name: Run linter
+        working-directory: packages/sync-engine
+        run: npm run lint

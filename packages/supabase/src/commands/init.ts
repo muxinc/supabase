@@ -1,82 +1,22 @@
-import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
-import { runMigrations } from '@mux/sync-engine';
 import packageJson from '../../package.json';
+import {
+  checkIfSupabaseDirExists,
+  getMigrationFilesFromSyncEngine,
+  createMigrationFiles,
+  createFunctionsEnvFile,
+  shouldOverwriteFunction,
+  runSupabaseMigrations,
+  setupDatabaseWithEnvLoading,
+} from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
 ].replace(/^\^/, '');
 const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
-
-interface InitAnswers {
-  databaseUrl: string;
-}
-
-function checkIfSupabaseDirExists() {
-  if (!fs.existsSync(supabaseDir)) {
-    console.error(chalk.red('❌ Error: Supabase directory not found!'));
-    console.log(
-      chalk.yellow(
-        '\nThis command must be run from a Supabase project root directory.'
-      )
-    );
-    console.log(
-      chalk.gray(
-        'Make sure you have a "supabase" folder in your current directory.'
-      )
-    );
-    console.log(chalk.gray("\nIf you haven't initialized Supabase yet, run:"));
-    console.log(chalk.cyan('  supabase init'));
-    process.exit(1);
-  }
-  console.log(chalk.green('✅ Found Supabase directory'));
-}
-
-async function shouldOverwriteMuxWebhook(
-  muxWebhookDir: string
-): Promise<boolean> {
-  if (!fs.existsSync(muxWebhookDir)) {
-    return true;
-  }
-
-  console.log(
-    chalk.yellow('\n⚠️  Warning: mux-webhook function already exists!')
-  );
-
-  const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([
-    {
-      type: 'confirm',
-      name: 'overwrite',
-      message: 'Do you want to overwrite the existing mux-webhook function?',
-      default: false,
-    },
-  ]);
-
-  if (!overwrite) {
-    console.log(chalk.blue('Files will not be modified.'));
-    return false;
-  }
-
-  console.log(chalk.yellow('Proceeding with overwrite...'));
-  return true;
-}
-
-function createFunctionsEnvFile(): void {
-  const functionsEnvPath = path.join(supabaseDir, 'functions', '.env');
-  if (!fs.existsSync(functionsEnvPath)) {
-    const envContent = `# Used to develop Edge Functions locally.\n# Configure the secrets required by the mux-webhook function.\nMUX_TOKEN_ID=your-mux-token-id\nMUX_TOKEN_SECRET=your-mux-token-secret\nMUX_WEBHOOK_SECRET=your-mux-webhook-secret\n`;
-    fs.writeFileSync(functionsEnvPath, envContent);
-    console.log(chalk.green('✅ Created supabase/functions/.env'));
-  } else {
-    console.log(
-      chalk.gray('supabase/functions/.env already exists. Skipping creation.')
-    );
-  }
-}
 
 function createMuxWebhookFunction(muxWebhookDir: string): void {
   // Create directories
@@ -274,53 +214,14 @@ function updateSupabaseConfig(): void {
 async function setupMuxWebhook(): Promise<void> {
   const muxWebhookDir = path.join(supabaseDir, 'functions', 'mux-webhook');
 
-  const shouldCreate = await shouldOverwriteMuxWebhook(muxWebhookDir);
+  const shouldCreate = await shouldOverwriteFunction(
+    muxWebhookDir,
+    'mux-webhook'
+  );
 
   if (shouldCreate) {
     createMuxWebhookFunction(muxWebhookDir);
     updateSupabaseConfig();
-  }
-}
-
-async function promptForDatabaseUrl(): Promise<string> {
-  const answers = await inquirer.prompt<InitAnswers>([
-    {
-      type: 'input',
-      name: 'databaseUrl',
-      message:
-        'Enter your Supabase database URL:\n' +
-        '  (Click the "Connect" button in the Supabase dashboard and use the\n' +
-        '   "Session pooler" option toward the bottom. Replace [YOUR-PASSWORD]\n' +
-        '   with the database password you configured when setting up your project)',
-      validate: (input: string) => {
-        if (!input) return 'Database URL is required';
-        if (!input.includes('postgresql://'))
-          return 'Please enter a valid PostgreSQL connection string';
-        return true;
-      },
-    },
-  ]);
-
-  return answers.databaseUrl;
-}
-
-async function runDatabaseMigrations(databaseUrl: string): Promise<void> {
-  const migrationSpinner = ora(
-    'Running database migrations. Creating tables under "mux" schema...'
-  ).start();
-  const logger = console;
-
-  try {
-    await runMigrations({
-      databaseUrl,
-      logger,
-    });
-
-    migrationSpinner.succeed('Database migrations completed successfully!');
-  } catch (error) {
-    migrationSpinner.fail('Failed to run migrations');
-    console.error(chalk.red('Migration error:'), error);
-    throw error;
   }
 }
 
@@ -351,8 +252,24 @@ function displayNextSteps(): void {
 }
 
 async function setupDatabase(): Promise<void> {
-  const databaseUrl = await promptForDatabaseUrl();
-  await runDatabaseMigrations(databaseUrl);
+  await setupDatabaseWithEnvLoading();
+
+  console.log(
+    chalk.blue('📦 Getting migration files from @mux/sync-engine...')
+  );
+  const migrations = getMigrationFilesFromSyncEngine();
+
+  if (migrations.length === 0) {
+    console.log(chalk.yellow('No migration files found in @mux/sync-engine'));
+    return;
+  }
+
+  console.log(chalk.blue(`Found ${migrations.length} migration files`));
+  await createMigrationFiles(migrations);
+
+  console.log(chalk.green('✅ Migration files created!'));
+
+  await runSupabaseMigrations();
 }
 
 export async function initCommand(): Promise<void> {

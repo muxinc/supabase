@@ -266,42 +266,111 @@ export class MuxSync {
 
   private async genericSync<T>(
     resourceName: string,
-    listFn: (
-      params: Record<string, unknown>
-    ) => Promise<{ data: T[]; next_cursor?: string }>,
+    listFn: (params: Record<string, unknown>) => AsyncIterable<T>,
     upsertFn: (items: T[]) => Promise<unknown[]>
   ): Promise<Sync> {
     this.logger.info(`Starting Mux ${resourceName} sync...`);
 
-    let nextCursor: string | undefined;
+    let totalSynced = 0;
+    let batchCount = 0;
+    let currentBatch: T[] = [];
+    const batchSize = 100;
+
+    try {
+      // Use the SDK's blessed auto-pagination
+      for await (const item of listFn({ limit: 100 })) {
+        currentBatch.push(item);
+
+        // Process in batches to match the original behavior
+        if (currentBatch.length >= batchSize) {
+          batchCount++;
+          this.logger.info(
+            `Processing ${currentBatch.length} ${resourceName} from batch ${batchCount}...`
+          );
+          await upsertFn(currentBatch);
+          totalSynced += currentBatch.length;
+          this.logger.info(
+            `✓ Batch ${batchCount} completed. Total ${resourceName} synced so far: ${totalSynced}`
+          );
+          currentBatch = [];
+        }
+      }
+
+      // Process any remaining items in the final batch
+      if (currentBatch.length > 0) {
+        batchCount++;
+        this.logger.info(
+          `Processing ${currentBatch.length} ${resourceName} from final batch ${batchCount}...`
+        );
+        await upsertFn(currentBatch);
+        totalSynced += currentBatch.length;
+        this.logger.info(
+          `✓ Final batch ${batchCount} completed. Total ${resourceName} synced so far: ${totalSynced}`
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error during ${resourceName} sync with auto-pagination:`,
+        error
+      );
+      throw error;
+    }
+
+    if (totalSynced === 0) {
+      this.logger.info(`No ${resourceName} found`);
+    }
+
+    this.logger.info(
+      `✅ Mux ${resourceName} sync completed! Total ${resourceName} synced: ${totalSynced}`
+    );
+    return { synced: totalSynced };
+  }
+
+  private async genericSyncWithoutCursor<T>(
+    resourceName: string,
+    listFn: (params: Record<string, unknown>) => Promise<any>,
+    upsertFn: (items: T[]) => Promise<unknown[]>
+  ): Promise<Sync> {
+    this.logger.info(`Starting Mux ${resourceName} sync (without cursor)...`);
+
     let totalSynced = 0;
     let pageCount = 0;
 
-    do {
-      pageCount++;
-      this.logger.info(`Fetching page ${pageCount} of Mux ${resourceName}...`);
+    try {
+      // Start with the first page
+      let page = await listFn({ limit: 100 });
 
-      const listParams: Record<string, unknown> = { limit: 100 };
-      if (nextCursor) listParams.cursor = nextCursor;
+      while (true) {
+        pageCount++;
+        const items = page.getPaginatedItems() as T[];
 
-      const response = await listFn(listParams);
-      const items = response.data;
+        if (items.length) {
+          this.logger.info(
+            `Processing ${items.length} ${resourceName} from page ${pageCount}...`
+          );
+          await upsertFn(items);
+          totalSynced += items.length;
+          this.logger.info(
+            `✓ Page ${pageCount} completed. Total ${resourceName} synced so far: ${totalSynced}`
+          );
+        } else {
+          this.logger.info(`No ${resourceName} found on page ${pageCount}`);
+        }
 
-      if (items.length) {
-        this.logger.info(
-          `Processing ${items.length} ${resourceName} from page ${pageCount}...`
-        );
-        await upsertFn(items);
-        totalSynced += items.length;
-        this.logger.info(
-          `✓ Page ${pageCount} completed. Total ${resourceName} synced so far: ${totalSynced}`
-        );
-      } else {
-        this.logger.info(`No ${resourceName} found on page ${pageCount}`);
+        // Move to next page if available
+        if (page.hasNextPage()) {
+          page = await page.getNextPage();
+        } else {
+          break;
+        }
       }
-
-      nextCursor = response.next_cursor;
-    } while (nextCursor);
+    } catch (error) {
+      this.logger.error(
+        `Error during ${resourceName} sync without cursor:`,
+        error
+      );
+      throw error;
+    }
 
     this.logger.info(
       `✅ Mux ${resourceName} sync completed! Total ${resourceName} synced: ${totalSynced}`
@@ -427,7 +496,7 @@ export class MuxSync {
   }
 
   private async syncMuxUploads(): Promise<Sync> {
-    return this.genericSync<Mux.Video.Uploads.Upload>(
+    return this.genericSyncWithoutCursor<Mux.Video.Uploads.Upload>(
       'uploads',
       (params) => this.mux.video.uploads.list(params),
       (uploads) => this.upsertUploads(uploads)
