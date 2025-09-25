@@ -26,7 +26,6 @@ interface InitAnswers {
   databaseUrl: string;
 }
 
-
 function createMuxWebhookFunction(muxWebhookDir: string): void {
   // Create directories
   fs.mkdirSync(muxWebhookDir, { recursive: true });
@@ -223,7 +222,10 @@ function updateSupabaseConfig(): void {
 async function setupMuxWebhook(): Promise<void> {
   const muxWebhookDir = path.join(supabaseDir, 'functions', 'mux-webhook');
 
-  const shouldCreate = await shouldOverwriteFunction(muxWebhookDir, 'mux-webhook');
+  const shouldCreate = await shouldOverwriteFunction(
+    muxWebhookDir,
+    'mux-webhook'
+  );
 
   if (shouldCreate) {
     createMuxWebhookFunction(muxWebhookDir);

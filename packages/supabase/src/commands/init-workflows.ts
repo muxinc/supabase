@@ -19,9 +19,9 @@ const supabaseDir = 'supabase';
 
 function getWorkflowMigrations(): { name: string; content: string }[] {
   return [
-  {
-    name: 'mux_enable_pgmq',
-    content: `-- Enable the pgmq extension for message queues
+    {
+      name: 'mux_enable_pgmq',
+      content: `-- Enable the pgmq extension for message queues
 CREATE EXTENSION IF NOT EXISTS pgmq;
 
 SELECT pgmq.create('workflow_messages');
@@ -44,10 +44,10 @@ alter role authenticator
 set pgrst.db_schemas = 'public,graphql_public,pgmq_public';
 notify pgrst, 'reload config';
 notify pgrst, 'reload schema';`,
-  },
-  {
-    name: 'mux_expose_pgmq_functions',
-    content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
+    },
+    {
+      name: 'mux_expose_pgmq_functions',
+      content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
 returns bigint
 language sql
 security definer
@@ -86,10 +86,10 @@ security definer
 as $$
 select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
 $$;`,
-  },
-  {
-    name: 'mux_setup_cron_job',
-    content: `-- Enable required extensions
+    },
+    {
+      name: 'mux_setup_cron_job',
+      content: `-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
@@ -109,7 +109,7 @@ SELECT net.http_post(
 select * from net._http_response;
 $$
 );`,
-  },
+    },
   ];
 }
 
@@ -168,7 +168,8 @@ function updateSupabaseConfigForVault(): void {
 
   // Check if [db.vault] section already exists
   const vaultSectionRegex = /^\[db\.vault\]\s*$/m;
-  const secretKeyRegex = /^\s*secret_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
+  const secretKeyRegex =
+    /^\s*secret_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
   const supabaseUrlRegex = /^\s*supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
 
   const hasVaultSection = vaultSectionRegex.test(configContent);
@@ -217,7 +218,8 @@ function updateSupabaseConfigForVault(): void {
 
   if (!hasVaultSection) {
     // Add the entire section
-    configToAdd = '\n[db.vault]\nsecret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nsupabase_url = "env(SUPABASE_URL)"\n';
+    configToAdd =
+      '\n[db.vault]\nsecret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nsupabase_url = "env(SUPABASE_URL)"\n';
     configContent += configToAdd;
   } else {
     // Add missing keys to existing section
@@ -288,7 +290,10 @@ async function setupProcessQueueCron(): Promise<void> {
     'process-queue-cron'
   );
 
-  const shouldCreate = await shouldOverwriteFunction(processQueueCronDir, 'process-queue-cron');
+  const shouldCreate = await shouldOverwriteFunction(
+    processQueueCronDir,
+    'process-queue-cron'
+  );
 
   if (shouldCreate) {
     createProcessQueueCronFunction(processQueueCronDir);
@@ -297,13 +302,16 @@ async function setupProcessQueueCron(): Promise<void> {
 }
 
 function displayNextSteps(): void {
-  console.log(chalk.blue.bold('\n🎉 AI Workflows setup completed successfully!'));
+  console.log(
+    chalk.blue.bold('\n🎉 AI Workflows setup completed successfully!')
+  );
   console.log(chalk.yellow('\nNext steps:'));
   console.log('1. Set the required environment variables:');
   console.log('   - SUPABASE_URL: Your Supabase project URL');
   console.log('   - SUPABASE_SERVICE_ROLE_KEY: Your Supabase service role key');
   console.log(
-    '2. Deploy the Edge Function: ' + chalk.cyan('supabase functions deploy process-queue-cron')
+    '2. Deploy the Edge Function: ' +
+      chalk.cyan('supabase functions deploy process-queue-cron')
   );
   console.log('3. Verify the setup:');
   console.log('   - Check that pgmq extension is enabled');
@@ -320,21 +328,19 @@ function displayNextSteps(): void {
     )
   );
   console.log(
-    chalk.gray(
-      '   For local development, you can add them to your .env file'
-    )
+    chalk.gray('   For local development, you can add them to your .env file')
   );
 }
 
 async function setupDatabase(): Promise<void> {
   await setupDatabaseWithEnvLoading();
 
-  console.log(
-    chalk.blue('📦 Getting workflow migration files...')
-  );
+  console.log(chalk.blue('📦 Getting workflow migration files...'));
   const migrations = getWorkflowMigrations();
 
-  console.log(chalk.blue(`Found ${migrations.length} workflow migration files`));
+  console.log(
+    chalk.blue(`Found ${migrations.length} workflow migration files`)
+  );
   await createMigrationFiles(migrations);
 
   console.log(chalk.green('✅ Migration files created!'));

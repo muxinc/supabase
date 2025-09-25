@@ -1,5 +1,5 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { processQueueCron } from 'npm:@mux/supabase@0.0.12'
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { processQueueCron } from 'npm:@mux/supabase@0.0.12';
 
 Deno.serve(async (req) => {
   await processQueueCron(req);
