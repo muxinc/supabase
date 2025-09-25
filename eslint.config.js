@@ -47,7 +47,8 @@ export default [
       '**/webhook-handler.ts',
       'supabase/functions/**/*.ts',
       'packages/sync-engine/src/**',
-      'packages/supabase/src/**',
+      'packages/supabase/**/*.ts',
+      'test_project/**',
     ],
     languageOptions: {
       parser: typescriptParser,
@@ -56,6 +57,7 @@ export default [
         Request: 'readonly',
         Response: 'readonly',
         console: 'readonly',
+        EdgeRuntime: 'readonly',
       },
     },
     plugins: {

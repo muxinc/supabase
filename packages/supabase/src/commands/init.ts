@@ -1,15 +1,11 @@
-import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
 import fs from 'node:fs';
 import path from 'node:path';
-import dotenv from 'dotenv';
 import packageJson from '../../package.json';
 import {
   checkIfSupabaseDirExists,
   getMigrationFilesFromSyncEngine,
   createMigrationFiles,
-  promptForDatabaseUrl,
   createFunctionsEnvFile,
   shouldOverwriteFunction,
   runSupabaseMigrations,
@@ -21,10 +17,6 @@ const muxSyncEngineVersion = packageJson.dependencies[
 ].replace(/^\^/, '');
 const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
-
-interface InitAnswers {
-  databaseUrl: string;
-}
 
 function createMuxWebhookFunction(muxWebhookDir: string): void {
   // Create directories

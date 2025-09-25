@@ -4,6 +4,7 @@ import ora from 'ora';
 import path from 'node:path';
 import inquirer from 'inquirer';
 import dotenv from 'dotenv';
+import { setTimeout, clearTimeout } from 'node:timers';
 
 const supabaseDir = 'supabase';
 
