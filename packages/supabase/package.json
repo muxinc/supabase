@@ -1,6 +1,6 @@
 {
   "name": "@mux/supabase",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
