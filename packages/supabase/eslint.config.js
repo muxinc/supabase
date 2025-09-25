@@ -46,6 +46,9 @@ module.exports = [
     languageOptions: {
       globals: {
         Deno: 'readonly',
+        EdgeRuntime: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly'
       },
     },
   },
