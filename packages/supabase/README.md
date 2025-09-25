@@ -113,3 +113,70 @@ The recommended way to keep data synced between Mux Assets and your database is 
 That way, when an Asset gets created, updated, or deleted, your application server receives a webhook and can update the database accordingly.
 
 `@mux/supabase` handles webhooks & keeping data updated in the `mux` schema.
+
+# AI Workflows on Supabase
+
+**This is all very alpha right now. It will probably change**
+
+You should only run this command after you have gone through the `@mux/supabase init` flow. Make sure you have all the `.env` vars listed above in dependencies
+
+```
+npx @mux/supabase init-workflows
+```
+
+This will
+
+- Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
+
+Next, set up `mux.toml`
+
+```
+touch supabase/functions/mux-webhook/mux.toml
+```
+
+Define a workflow and when it should run:
+
+**mux.toml**
+
+```
+[workflows.video-embeddings]
+events = ["video.asset.track.ready"]
+```
+
+This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `video-embeddings`
+
+Create the Supabase Edge Function:
+
+```
+npx supabase functions new video-embeddings
+```
+
+Open up supabase/functions/video-embeddings.ts
+
+```tsx
+Deno.serve(async (req) => {
+  try {
+    const event = (await req.json()) as UnwrapWebhookEvent;
+    const track = event.data;
+    if (!track) {
+      console.log('No text track');
+      return new Response('No text track in webhook', { status: 500 });
+    }
+    const trackId = track.id
+    const assetId = track.asset_id
+
+    console.log(`Creating embeddings for: ${assetId}`)
+    // do your logic to make API calls, write data into your db, etc
+    return new Response('No text track in webhook', { status: 500 });
+  } catch (error) {
+    console.error("Error running video-embedding.ts:", error)
+    return new Response(
+      JSON.stringify({ error: "500" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    )
+  }
+})
+```
