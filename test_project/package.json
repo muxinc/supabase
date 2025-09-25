@@ -1,0 +1,13 @@
+{
+  "name": "test-project",
+  "version": "1.0.0",
+  "description": "Test project for @mux/supabase CLI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sdk:init": "node ../packages/supabase/dist/index.cjs init",
+    "sdk:init-workflows": "node ../packages/supabase/dist/index.cjs init-workflows"
+  },
+  "author": "",
+  "license": "MIT"
+}

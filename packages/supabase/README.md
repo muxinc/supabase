@@ -16,6 +16,12 @@
 
 Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init).
 
+You should have a local .env file with
+
+- `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- `SUPABASE_SERVICE_ROLE_KEY` After you run `supabase start` locally, this will be printed to the terminal as `service_role_key`, grab that and put it in .env
+- `SUPABASE_URL` If you are developing locally this is: `http://127.0.0.1:54321`
+
 **Setup**
 
 Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets.
@@ -29,16 +35,6 @@ This will:
 - Create the `mux` schema and corresponding tables
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
 - Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` in the Supabase dashboard
-
-**Disable JWT auth on the webhook endpoint**
-
-- Open `supabase/config.toml`
-- Add this code to disable the JWT auth on the webhook endpoint (the Mux SDK when handling the webhook will [verify the signature](https://www.mux.com/docs/core/verify-webhook-signatures)):
-
-```toml
-[functions.mux-webhook]
-verify_jwt = false
-```
 
 Deploy the webhook:
 
@@ -57,12 +53,13 @@ Go to your Mux dashboard, make sure you're in the correct environment and upload
 If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database:
 
 ```typescript
-import { createMuxSync } from '@mux/sync-engine';
+import { MuxSync } from '@mux/sync-engine';
 
-const muxSync = createMuxSync({
+const muxSync = MuxSync({
   databaseUrl: 'your-supabase-database-url',
   muxTokenId: 'your-mux-token-id',
   muxTokenSecret: 'your-mux-token-secret',
+  muxWebhookSecret: 'your-mux-webhook-secret',
 });
 
 // Backfill all data
@@ -116,3 +113,70 @@ The recommended way to keep data synced between Mux Assets and your database is 
 That way, when an Asset gets created, updated, or deleted, your application server receives a webhook and can update the database accordingly.
 
 `@mux/supabase` handles webhooks & keeping data updated in the `mux` schema.
+
+# AI Workflows on Supabase
+
+**This is all very alpha right now. It will probably change**
+
+You should only run this command after you have gone through the `@mux/supabase init` flow. Make sure you have all the `.env` vars listed above in dependencies
+
+```
+npx @mux/supabase init-workflows
+```
+
+This will
+
+- Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
+
+Next, set up `mux.toml`
+
+```
+touch supabase/functions/mux-webhook/mux.toml
+```
+
+Define a workflow and when it should run:
+
+**mux.toml**
+
+```
+[workflows.video-embeddings]
+events = ["video.asset.track.ready"]
+```
+
+This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `video-embeddings`
+
+Create the Supabase Edge Function:
+
+```
+npx supabase functions new video-embeddings
+```
+
+Open up supabase/functions/video-embeddings.ts
+
+```tsx
+Deno.serve(async (req) => {
+  try {
+    const event = (await req.json()) as UnwrapWebhookEvent;
+    const track = event.data;
+    if (!track) {
+      console.log('No text track');
+      return new Response('No text track in webhook', { status: 500 });
+    }
+    const trackId = track.id
+    const assetId = track.asset_id
+
+    console.log(`Creating embeddings for: ${assetId}`)
+    // do your logic to make API calls, write data into your db, etc
+    return new Response('No text track in webhook', { status: 500 });
+  } catch (error) {
+    console.error("Error running video-embedding.ts:", error)
+    return new Response(
+      JSON.stringify({ error: "500" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    )
+  }
+})
+```
