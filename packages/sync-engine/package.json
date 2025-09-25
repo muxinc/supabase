@@ -1,6 +1,6 @@
 {
   "name": "@mux/sync-engine",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Mux Sync Engine to sync Mux data based on webhooks to Postgres",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
