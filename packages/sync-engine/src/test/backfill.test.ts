@@ -3,7 +3,7 @@ import { Client } from 'pg';
 import { MuxSync } from '../muxSync';
 import { runMigrations } from '../database/migrate';
 import { getTestDatabaseUrl } from './setup';
-import { mockMux } from './helpers/mockMux';
+import { mockMux, createAsyncIterable } from './helpers/mockMux';
 
 describe('syncBackfill', () => {
   let client: Client;
@@ -150,13 +150,11 @@ describe('syncBackfill', () => {
   });
 
   it('should handle empty response from Mux API', async () => {
-    // Mock empty response
+    // Mock empty AsyncIterable response
     const emptyMockMux = {
       video: {
         assets: {
-          list: vitest.fn(() =>
-            Promise.resolve({ data: [], next_cursor: null })
-          ),
+          list: vitest.fn(() => createAsyncIterable([])),
         },
       },
     };
@@ -174,38 +172,31 @@ describe('syncBackfill', () => {
 
   it('should handle pagination correctly', async () => {
     // Mock paginated response
-    let callCount = 0;
+    const paginatedAssets = [
+      {
+        id: 'asset_page_1',
+        status: 'ready',
+        created_at: '1640995200',
+        duration: 120.5,
+        max_stored_resolution: 'HD',
+        max_stored_frame_rate: 30,
+        aspect_ratio: '16:9',
+      },
+      {
+        id: 'asset_page_2',
+        status: 'ready',
+        created_at: '1640995200',
+        duration: 60.0,
+        max_stored_resolution: 'FHD',
+        max_stored_frame_rate: 60,
+        aspect_ratio: '16:9',
+      },
+    ];
+
     const paginatedMockMux = {
       video: {
         assets: {
-          list: vitest.fn((_params) => {
-            callCount++;
-            if (callCount === 1) {
-              // First page
-              return Promise.resolve({
-                data: [
-                  {
-                    id: 'asset_page_1',
-                    status: 'ready',
-                    created_at: '1640995200',
-                  },
-                ],
-                next_cursor: 'next_page_cursor',
-              });
-            } else {
-              // Second page (last page)
-              return Promise.resolve({
-                data: [
-                  {
-                    id: 'asset_page_2',
-                    status: 'ready',
-                    created_at: '1640995200',
-                  },
-                ],
-                next_cursor: null,
-              });
-            }
-          }),
+          list: vitest.fn((_params) => createAsyncIterable(paginatedAssets)),
         },
       },
     };
@@ -219,13 +210,9 @@ describe('syncBackfill', () => {
     expect(result.muxAssets!.synced).toBe(2);
 
     // Verify pagination was called correctly
-    expect(paginatedMockMux.video.assets.list).toHaveBeenCalledTimes(2);
-    expect(paginatedMockMux.video.assets.list).toHaveBeenNthCalledWith(1, {
+    expect(paginatedMockMux.video.assets.list).toHaveBeenCalledTimes(1);
+    expect(paginatedMockMux.video.assets.list).toHaveBeenCalledWith({
       limit: 100,
-    });
-    expect(paginatedMockMux.video.assets.list).toHaveBeenNthCalledWith(2, {
-      limit: 100,
-      cursor: 'next_page_cursor',
     });
 
     // Verify both assets were inserted
@@ -252,19 +239,12 @@ describe('syncBackfill', () => {
     const updatedMockMux = {
       video: {
         assets: {
-          list: vitest.fn(() =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'asset_test_123',
-                  status: 'errored', // Changed status
-                  created_at: '1640995200',
-                  duration: 120.5,
-                },
-              ],
-              next_cursor: null,
-            })
-          ),
+          list: vitest.fn(() => createAsyncIterable([{
+            id: 'asset_test_123',
+            status: 'errored', // Changed status
+            created_at: '1640995200',
+            duration: 120.5,
+          }])),
         },
       },
     };
