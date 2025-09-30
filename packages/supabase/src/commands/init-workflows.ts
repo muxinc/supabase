@@ -352,7 +352,7 @@ export async function initWorkflowsCommand(): Promise<void> {
   console.log(chalk.blue.bold('🚀 Mux AI Workflows - Supabase Initialization'));
   console.log(
     chalk.gray(
-      'This will run workflow migrations in your Supabase database and create a process-queue-cron Edge Function.\n'
+      'This will set up Supabase queues, a new Edge Function, and create migration files.\n'
     )
   );
 

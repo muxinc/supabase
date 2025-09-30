@@ -267,11 +267,11 @@ export async function createMigrationFiles(
     );
   } else if (createdCount > 0) {
     spinner.succeed(
-      `Migrations files created successfully (${createdCount} files)`
+      `Migration files created successfully (${createdCount} files)`
     );
   } else if (skippedCount > 0) {
     spinner.succeed(
-      `All migrations files already exist (${skippedCount} files skipped)`
+      `All migration files already exist (${skippedCount} files skipped)`
     );
   } else {
     spinner.succeed('Migrations check completed');
