@@ -5,6 +5,7 @@
 **Publish `@mux/sync-engine`**
 
 - First, `cd packages/sync-engine`
+- Bump version in `package.json`
 - Run `npm install`
 - Run `npm run build`
 - Publish `npm publish --access public`
@@ -13,6 +14,7 @@
 **Publish `@mux/supabase`**
 
 - First, `cd packages/supabase`
+- Bump version in `package.json`
 - If there's a new version of `@mux/sync-engine`, update the `package.json`
 - Run `npm install`
 - Run `npm run build`
