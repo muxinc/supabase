@@ -371,6 +371,9 @@ export async function runSupabaseMigrations(): Promise<void> {
         clearTimeout(timeout);
         if (code === 0) {
           resolve(stdout);
+          migrationSpinner.succeed(
+            '✅ Database migrations applied successfully!'
+          );
         } else {
           reject(
             new Error(
@@ -382,11 +385,18 @@ export async function runSupabaseMigrations(): Promise<void> {
 
       child.on('error', (error) => {
         clearTimeout(timeout);
-        reject(new Error(`Failed to spawn supabase CLI: ${error.message}`));
+        // Check if it's the ENOENT error (command not found)
+        if (error.code === 'ENOENT') {
+          migrationSpinner.warn('⚠️ Supabase CLI not found in PATH');
+          console.log(
+            chalk.yellow('💡 Please manually run: supabase migration up')
+          );
+          resolve('');
+        } else {
+          reject(new Error(`Failed to spawn supabase CLI: ${error.message}`));
+        }
       });
     });
-
-    migrationSpinner.succeed('✅ Database migrations applied successfully!');
   } catch (error) {
     migrationSpinner.fail('❌ Failed to apply migrations');
     console.error(
