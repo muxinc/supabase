@@ -16,15 +16,11 @@
 
 Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init).
 
-You should have a local .env file in your project's root (same level as the `supabase` folder) with
-
-- `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
-- `SUPABASE_SERVICE_ROLE_KEY` After you run `supabase start` locally, this will be printed to the terminal as `service_role_key`, grab that and put it in .env. If it doesn't appear, run `npx supabase status -o env` and look for `SERVICE_ROLE_KEY`
-- `SUPABASE_URL` If you are developing locally this is: `http://supabase_kong_[name_of_supabase_project]:8000` (replace `[name_of_supabase_project]` with your actual project name)
-
 **Local Setup**
 
-Run init and follow the prompts. Make sure to have the required secrets in the .env file within the "/functions" folder
+You should run this after your supabase project is running with `npx supabase start`
+
+Run init and follow the prompts. Then env vars should be in the `.env` file within the `supabase/functions` directory.
 
 ```bash
 npx @mux/supabase init
@@ -125,9 +121,17 @@ In addition to the information from Mux, the application also keeps track of thi
 
 ## AI Workflows on Supabase
 
-**This is all very alpha right now. It will probably change**
+**This considered alpha right now and may change in future versions**
 
-You should only run this command after you have gone through the `@mux/supabase init` flow. Make sure you have all the `.env` vars listed above in dependencies
+**Env setup**
+
+You should have a local .env file in your project's root (same level as the `supabase` folder). This is **a different `.env` file** that what you have in `supabase/functions/.env`
+
+- `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- `SUPABASE_SERVICE_ROLE_KEY` Run `npx supabase status -o env` and look for `SERVICE_ROLE_KEY`
+- `SUPABASE_URL` If you are developing locally this is: `http://supabase_kong_[name_of_supabase_project]:8000` (replace `[name_of_supabase_project]` with your actual project name)
+
+You should only run this command after you have gone through the `@mux/supabase init` flow.
 
 ```
 npx @mux/supabase init-workflows
@@ -136,61 +140,45 @@ npx @mux/supabase init-workflows
 This will
 
 - Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
+- Set up 3 secrets in `db.vault`. When migrations are run, the vault values are updated. These values need to be in the vault in order for the workflows to be called
+- Create `supabase/functions/mux.toml` file, where you will configure workflows
 
-Next, we need to find `functions.mux-webhook` in the `config.toml` and add the following line:
-```
-static_files = [ "./functions/mux-webhook/mux.toml" ]
-```
-
-Within the file, it should look like this:
-```toml
-[functions.mux-webhook]
-verify_jwt = false
-static_files = [ "./functions/mux-webhook/mux.toml" ]
-```
-
-Next, set up `mux.toml`
-
-```
-touch supabase/functions/mux-webhook/mux.toml
-```
 
 Define a workflow and when it should run:
 
 **mux.toml**
 
-```
-[workflows.video-embeddings]
-events = ["video.asset.track.ready"]
+```toml
+# supabase/functions/mux-webhook/mux.toml
+[workflows.content-moderation]
+events = ["video.asset.ready"]
 ```
 
-This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `video-embeddings`
+This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
 
 Create the Supabase Edge Function:
 
 ```
-npx supabase functions new video-embeddings
+npx supabase functions new content-moderation
 ```
 
-Open up supabase/functions/video-embeddings/index.ts
+Open up supabase/functions/content-moderation/index.ts
 
 ```tsx
 Deno.serve(async (req) => {
   try {
     const event = (await req.json()) as UnwrapWebhookEvent;
-    const track = event.data;
+    const asset = event.data;
     if (!track) {
       console.log('No text track');
-      return new Response('No text track in webhook', { status: 500 });
+      return new Response('No asset in webhook', { status: 500 });
     }
-    const trackId = track.id
-    const assetId = track.asset_id
 
-    console.log(`Creating embeddings for: ${assetId}`)
+    console.log(`Running modeartion for: ${asset.id}`)
     // do your logic to make API calls, write data into your db, etc
-    return new Response('No text track in webhook', { status: 200 });
+    return new Response('Moderation complete', { status: 200 });
   } catch (error) {
-    console.error("Error running video-embedding.ts:", error)
+    console.error("Error running content-moderation.ts:", error)
     return new Response(
       JSON.stringify({ error: "500" }),
       {
@@ -204,7 +192,7 @@ Deno.serve(async (req) => {
 
 **Testing**
 
-To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset in Mux with tracks, for example by adding auto-generated captions.
+To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset and see that your content-moderation function runs.
 
 **Troubleshooting**
 
@@ -212,9 +200,10 @@ If the Cron returns bearer token issues, make sure you have properly set the `se
 
 You can find this in the Supabase dashboard under Integrations -> Vault and check what value is set for `secret_key`.
 
-Note that vault values are loaded/modified when migrations are applied (supabase migration up).
+Note that vault values are loaded/modified when migrations are applied (`supabase migration up`).
 
 In any case, if you want to test ignoring this, you can run the functions with JWT verification disabled using the command:
+
 ```bash
 npx supabase functions serve --no-verify-jwt
 ```
