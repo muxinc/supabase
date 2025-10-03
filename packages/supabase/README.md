@@ -16,15 +16,15 @@
 
 Before setting this up, you should already have Supabase initialized in your project (your project should already have a `supabase` directory). If you have not already done this, run `npx supabase init` and see [this guide](https://supabase.com/docs/reference/cli/supabase-init).
 
-You should have a local .env file with
+You should have a local .env file in your project's root (same level as the `supabase` folder) with
 
 - `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
-- `SUPABASE_SERVICE_ROLE_KEY` After you run `supabase start` locally, this will be printed to the terminal as `service_role_key`, grab that and put it in .env
-- `SUPABASE_URL` If you are developing locally this is: `http://127.0.0.1:54321`
+- `SUPABASE_SERVICE_ROLE_KEY` After you run `supabase start` locally, this will be printed to the terminal as `service_role_key`, grab that and put it in .env. If it doesn't appear, run `npx supabase status -o env` and look for `SERVICE_ROLE_KEY`
+- `SUPABASE_URL` If you are developing locally this is: `http://supabase_kong_[name_of_supabase_project]:8000` (replace `[name_of_supabase_project]` with your actual project name)
 
-**Setup**
+**Local Setup**
 
-Run init & follow the prompts. Be sure to set the required secrets in the Supabase dashboard under Edge Functions > Secrets.
+Run init and follow the prompts. Make sure to have the required secrets in the .env file within the "/functions" folder
 
 ```bash
 npx @mux/supabase init
@@ -34,28 +34,44 @@ This will:
 
 - Create the `mux` schema and corresponding tables
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
-- Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` in the Supabase dashboard
+- Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`.
 
-Deploy the webhook:
+**Running the Webhook locally**
+
+`@mux/supabase` handles webhooks & keeping data updated in the `mux` schema.
+
+To test the webhook locally, run:
 
 ```bash
-npx supabase functions deploy mux-webhook --prune
+npx supabase functions serve mux-webhook
 ```
 
-After deploying the webhook function, set up the webhook in the Mux dashboard and add `MUX_WEBHOOK_SECRET` to the Supabase dashboard.
+This will run the Edge function locally on port 54321. To test with Mux, you need to expose the function to the internet. Use a service like ngrok for this.
+
+Once done, get the public URL of your function (it should have a format like `https://d99d3b847eb8.ngrok-free.app/functions/v1/mux-webhook`) and set it in Mux following these steps: [Listen for webhooks](https://www.mux.com/docs/core/listen-for-webhooks).
+
+After that, copy the webhook secret from Mux into `MUX_WEBHOOK_SECRET` in your .env file.
 
 **Verify that it's working**
 
-Go to your Mux dashboard, make sure you're in the correct environment and upload an asset. Then navigate to your Supabase dashboard and you should see a row for the Asset in the `mux` schema `assets` table and the `id` should match the ID for the Asset in the Mux dashboard.
+Go to your Mux dashboard, make sure you're in the correct environment and upload an asset. Then navigate to your local Supabase dashboard and you should see a row for the Asset in the `mux` schema `assets` table and the `id` should match the ID for the Asset in the Mux dashboard.
 
 ## Backfilling Existing Data
 
-If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database:
+If you already have Mux assets, live streams, or uploads in your account, you can backfill them to your Supabase database using the CLI command:
+
+```bash
+npx @mux/supabase backfill
+```
+
+This will prompt you for the database URL where it will store the data and your Mux token and secret to sync the data.
+
+If you prefer not to use the command, you can use the sync-engine directly:
 
 ```typescript
 import { MuxSync } from '@mux/sync-engine';
 
-const muxSync = MuxSync({
+const muxSync = new MuxSync({
   databaseUrl: 'your-supabase-database-url',
   muxTokenId: 'your-mux-token-id',
   muxTokenSecret: 'your-mux-token-secret',
@@ -106,15 +122,8 @@ In addition to the information from Mux, the application also keeps track of thi
 
 > Mux Assets DO have [fields for metadata](https://www.mux.com/docs/guides/add-metadata-to-your-videos): `title`, `creator_id` and `external_id` which will be saved under the `meta` JSON column in the `assets` table. Higher-level concepts (titles, chapters, permissions, etc.) are still considered application-level concerns.
 
-### Webhooks
 
-The recommended way to keep data synced between Mux Assets and your database is to set up [Webhooks](https://www.mux.com/docs/core/listen-for-webhooks).
-
-That way, when an Asset gets created, updated, or deleted, your application server receives a webhook and can update the database accordingly.
-
-`@mux/supabase` handles webhooks & keeping data updated in the `mux` schema.
-
-# AI Workflows on Supabase
+## AI Workflows on Supabase
 
 **This is all very alpha right now. It will probably change**
 
@@ -127,6 +136,18 @@ npx @mux/supabase init-workflows
 This will
 
 - Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
+
+Next, we need to find `functions.mux-webhook` in the `config.toml` and add the following line:
+```
+static_files = [ "./functions/mux-webhook/mux.toml" ]
+```
+
+Within the file, it should look like this:
+```toml
+[functions.mux-webhook]
+verify_jwt = false
+static_files = [ "./functions/mux-webhook/mux.toml" ]
+```
 
 Next, set up `mux.toml`
 
@@ -151,7 +172,7 @@ Create the Supabase Edge Function:
 npx supabase functions new video-embeddings
 ```
 
-Open up supabase/functions/video-embeddings.ts
+Open up supabase/functions/video-embeddings/index.ts
 
 ```tsx
 Deno.serve(async (req) => {
@@ -167,7 +188,7 @@ Deno.serve(async (req) => {
 
     console.log(`Creating embeddings for: ${assetId}`)
     // do your logic to make API calls, write data into your db, etc
-    return new Response('No text track in webhook', { status: 500 });
+    return new Response('No text track in webhook', { status: 200 });
   } catch (error) {
     console.error("Error running video-embedding.ts:", error)
     return new Response(
@@ -180,3 +201,63 @@ Deno.serve(async (req) => {
   }
 })
 ```
+
+**Testing**
+
+To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset in Mux with tracks, for example by adding auto-generated captions.
+
+**Troubleshooting**
+
+If the Cron returns bearer token issues, make sure you have properly set the `secret_key` in the vault with the `SERVICE_ROLE_KEY` as mentioned in the Dependencies section.
+
+You can find this in the Supabase dashboard under Integrations -> Vault and check what value is set for `secret_key`.
+
+Note that vault values are loaded/modified when migrations are applied (supabase migration up).
+
+In any case, if you want to test ignoring this, you can run the functions with JWT verification disabled using the command:
+```bash
+npx supabase functions serve --no-verify-jwt
+```
+
+## Production Deployment
+
+To deploy to a Supabase project, you need to do the following:
+
+**1. Modify the root .env with production values:**
+
+- `SUPABASE_DB_URL`: Find this value in the "Connect" section of the Dashboard and set it (should have the format `postgresql://...`)
+- `SUPABASE_SERVICE_ROLE_KEY`: This is found in the Dashboard under Project Settings -> API Keys. Use the value of the service_role.
+- `SUPABASE_URL`: This is the URL used to call edge functions, should have the format `https://[project_id].supabase.co`
+
+**2. Run migrations:**
+
+Once modified, run the migrations in your project with the command:
+```bash
+supabase db push
+```
+This will create the tables you had locally from the migrations folder.
+
+**3. Set secrets for Edge Functions:**
+
+You can do this in 2 ways:
+- Set manually in the Dashboard
+- Run the command:
+```bash
+supabase secrets set --env-file ./supabase/functions/.env
+supabase secrets list
+```
+
+Make sure you have the .env file in the functions folder with your correct credentials.
+
+**4. Deploy functions:**
+
+Once ready, deploy the functions with:
+```bash
+supabase functions deploy
+```
+
+**5. Set up the webhook:**
+
+When everything is ready, we need to properly set the `MUX_WEBHOOK_SECRET`. Once the mux-webhook is deployed in Supabase, the URL will appear in Dashboard -> Edge Functions.
+
+Similar to the "Running the Webhook locally" section, create the webhook in Mux with that URL and set the `MUX_WEBHOOK_SECRET` in the Supabase Dashboard with the new value.
