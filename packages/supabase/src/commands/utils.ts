@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import ora from 'ora';
 import path from 'node:path';
 import inquirer from 'inquirer';
-import dotenv from 'dotenv';
 import { setTimeout, clearTimeout } from 'node:timers';
 
 const supabaseDir = 'supabase';
@@ -26,6 +25,32 @@ export function checkIfSupabaseDirExists() {
     process.exit(1);
   }
   console.log(chalk.green('✅ Found Supabase directory'));
+}
+
+export async function promptForDatabaseUrl(): Promise<string> {
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'databaseUrl',
+      message:
+        'Enter your Supabase database URL:\n' +
+        '(This value is shown as DB URL when running: ' +
+        chalk.cyan('supabase start)') +
+        chalk.gray(
+          '\n💡 Tip: For production development, Click the "Connect" button in the Supabase dashboard\n' +
+            'and use the "Session pooler" option toward the bottom. Replace [YOUR-PASSWORD]\n' +
+            'with the database password you configured when setting up your project'
+        ),
+      validate: (input: string) => {
+        if (!input) return 'Database URL is required';
+        if (!input.includes('postgresql://'))
+          return 'Please enter a valid PostgreSQL connection string';
+        return true;
+      },
+    },
+  ]);
+
+  return answers.databaseUrl;
 }
 
 function getMigrationsPath(): string {
@@ -278,24 +303,6 @@ export async function createMigrationFiles(
   }
 }
 
-export async function promptForDatabaseUrl(): Promise<string> {
-  const databaseUrl = process.env.SUPABASE_DB_URL;
-
-  if (databaseUrl) {
-    console.log(chalk.green('✅ Using SUPABASE_DB_URL from environment'));
-    return databaseUrl;
-  }
-
-  console.log(chalk.yellow('No database URL found in environment variables.'));
-  console.log(chalk.blue('Please set SUPABASE_DB_URL environment variable.'));
-  console.log(
-    chalk.gray(
-      'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
-    )
-  );
-  process.exit(1);
-}
-
 export function createFunctionsEnvFile(): void {
   const functionsEnvPath = path.join(supabaseDir, 'functions', '.env');
   if (!fs.existsSync(functionsEnvPath)) {
@@ -406,19 +413,4 @@ export async function runSupabaseMigrations(): Promise<void> {
     console.log(chalk.yellow('💡 You can manually run: supabase migration up'));
     throw error;
   }
-}
-
-export async function setupDatabaseWithEnvLoading(): Promise<void> {
-  // Load environment variables from various .env file locations
-  const envPaths = ['.env', 'supabase/.env', 'supabase/functions/.env'];
-
-  for (const envPath of envPaths) {
-    if (fs.existsSync(envPath)) {
-      console.log(chalk.gray(`Loading environment variables from ${envPath}`));
-      dotenv.config({ path: envPath });
-      break;
-    }
-  }
-
-  await promptForDatabaseUrl();
 }

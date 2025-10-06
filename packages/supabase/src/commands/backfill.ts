@@ -2,41 +2,21 @@ import chalk from 'chalk';
 import fs from 'node:fs';
 import dotenv from 'dotenv';
 import { MuxSync } from '@mux/sync-engine';
+import { promptForDatabaseUrl } from './utils';
 
-async function loadAllEnvironmentVariables(): Promise<{
-  databaseUrl: string;
+async function getMuxCredentials(): Promise<{
   muxTokenId: string;
   muxTokenSecret: string;
   muxWebhookSecret: string;
 }> {
-  // Load environment variables from various .env file locations
-  const envPaths = ['.env', 'supabase/.env', 'supabase/functions/.env'];
+  const envPath = 'supabase/functions/.env';
 
-  for (const envPath of envPaths) {
-    if (fs.existsSync(envPath)) {
-      console.log(chalk.gray(`Loading environment variables from ${envPath}`));
-      dotenv.config({ path: envPath });
-      break;
-    }
+  if (fs.existsSync(envPath)) {
+    console.log(chalk.gray(`Loading environment variables from ${envPath}`));
+    dotenv.config({ path: envPath });
   }
 
-  // Get database URL
-  const databaseUrl = process.env.SUPABASE_DB_URL;
-  if (!databaseUrl) {
-    console.log(
-      chalk.yellow('No database URL found in environment variables.')
-    );
-    console.log(chalk.blue('Please set SUPABASE_DB_URL environment variable.'));
-    console.log(
-      chalk.gray(
-        'Example: export SUPABASE_DB_URL="postgresql://your-database-url"'
-      )
-    );
-    process.exit(1);
-  }
-  console.log(chalk.green('✅ Using SUPABASE_DB_URL from environment'));
-
-  // Get Mux credentials
+  // Get token id and token secret
   const muxTokenId = process.env.MUX_TOKEN_ID;
   const muxTokenSecret = process.env.MUX_TOKEN_SECRET;
 
@@ -61,7 +41,6 @@ async function loadAllEnvironmentVariables(): Promise<{
   const muxWebhookSecret = process.env.MUX_WEBHOOK_SECRET || '';
 
   return {
-    databaseUrl,
     muxTokenId,
     muxTokenSecret,
     muxWebhookSecret,
@@ -69,8 +48,9 @@ async function loadAllEnvironmentVariables(): Promise<{
 }
 
 export async function backfillCommand(): Promise<void> {
-  const { databaseUrl, muxTokenId, muxTokenSecret, muxWebhookSecret } =
-    await loadAllEnvironmentVariables();
+  const databaseUrl = await promptForDatabaseUrl();
+  const { muxTokenId, muxTokenSecret, muxWebhookSecret } =
+    await getMuxCredentials();
 
   const muxSync = new MuxSync({
     databaseUrl,
