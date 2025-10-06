@@ -357,6 +357,37 @@ function updateSupabaseConfigForMuxWebhook(): void {
   );
 }
 
+function createMuxTomlFile(): void {
+  const muxWebhookDir = path.join(supabaseDir, 'functions', 'mux-webhook');
+
+  // Check if the mux-webhook directory exists
+  if (!fs.existsSync(muxWebhookDir)) {
+    console.log(
+      chalk.gray('mux-webhook directory not found, skipping mux.toml creation')
+    );
+    return;
+  }
+
+  const muxTomlPath = path.join(muxWebhookDir, 'mux.toml');
+
+  // Check if mux.toml already exists
+  if (fs.existsSync(muxTomlPath)) {
+    console.log(chalk.gray('mux.toml already exists in mux-webhook directory'));
+    return;
+  }
+
+  // Create mux.toml with the template content
+  const muxTomlContent = `# [workflows.content-moderation]
+# events = ["video.asset.track.ready"]
+`;
+
+  fs.writeFileSync(muxTomlPath, muxTomlContent);
+
+  console.log(
+    chalk.green('✅ Created mux.toml in supabase/functions/mux-webhook/')
+  );
+}
+
 async function setupProcessQueueCron(): Promise<void> {
   const processQueueCronDir = path.join(
     supabaseDir,
@@ -436,6 +467,9 @@ export async function initWorkflowsCommand(): Promise<void> {
 
   // Update config.toml for mux-webhook function
   updateSupabaseConfigForMuxWebhook();
+
+  // Create mux.toml in mux-webhook directory
+  createMuxTomlFile();
 
   try {
     await setupDatabase();
