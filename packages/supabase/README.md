@@ -127,7 +127,6 @@ In addition to the information from Mux, the application also keeps track of thi
 
 You should have a local .env file in your project's root (same level as the `supabase` folder). This is **a different `.env` file** that what you have in `supabase/functions/.env`
 
-- `SUPABASE_DB_URL` If you're running supabase locally the value would be: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
 - `SUPABASE_SERVICE_ROLE_KEY` Run `npx supabase status -o env` and look for `SERVICE_ROLE_KEY`
 - `SUPABASE_URL` If you are developing locally this is: `http://supabase_kong_[name_of_supabase_project]:8000` (replace `[name_of_supabase_project]` with your actual project name)
 
@@ -140,8 +139,9 @@ npx @mux/supabase init-workflows
 This will
 
 - Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
-- Set up 3 secrets in `db.vault`. When migrations are run, the vault values are updated. These values need to be in the vault in order for the workflows to be called
-- Create `supabase/functions/mux.toml` file, where you will configure workflows
+- Set up 2 secrets in `db.vault`. When migrations are run, the vault values are updated. These values need to be in the vault in order for the workflows to be called
+- Create `supabase/functions/mux.toml` file, where you will configure workflows. It also contains a example of use with content-moderation workflow.
+- Add `static_files` in the `config.toml` for the `mux-webhook` function
 
 
 Define a workflow and when it should run:
@@ -196,9 +196,9 @@ To test, run `supabase functions serve`, this will execute all created functions
 
 **Troubleshooting**
 
-If the Cron returns bearer token issues, make sure you have properly set the `secret_key` in the vault with the `SERVICE_ROLE_KEY` as mentioned in the Dependencies section.
+If the Cron returns bearer token issues, make sure you have properly set the `mux_supabase_service_role_key` in the vault with the `SERVICE_ROLE_KEY` as mentioned in the Dependencies section.
 
-You can find this in the Supabase dashboard under Integrations -> Vault and check what value is set for `secret_key`.
+You can find this in the Supabase dashboard under Integrations -> Vault and check what value is set for `mux_supabase_service_role_key`.
 
 Note that vault values are loaded/modified when migrations are applied (`supabase migration up`).
 
@@ -214,7 +214,6 @@ To deploy to a Supabase project, you need to do the following:
 
 **1. Modify the root .env with production values:**
 
-- `SUPABASE_DB_URL`: Find this value in the "Connect" section of the Dashboard and set it (should have the format `postgresql://...`)
 - `SUPABASE_SERVICE_ROLE_KEY`: This is found in the Dashboard under Project Settings -> API Keys. Use the value of the service_role.
 - `SUPABASE_URL`: This is the URL used to call edge functions, should have the format `https://[project_id].supabase.co`
 
@@ -237,6 +236,8 @@ supabase secrets list
 ```
 
 Make sure you have the .env file in the functions folder with your correct credentials.
+
+Note: You can have a `.env.production` file to manage 2 environments if desired.
 
 **4. Deploy functions:**
 
