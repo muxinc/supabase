@@ -251,6 +251,112 @@ function updateSupabaseConfigForVault(): void {
   );
 }
 
+function updateSupabaseConfigForMuxWebhook(): void {
+  const configPath = path.join(supabaseDir, 'config.toml');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      chalk.yellow('⚠️  config.toml not found in supabase directory')
+    );
+    return;
+  }
+
+  let configContent = fs.readFileSync(configPath, 'utf-8');
+
+  // Check if [functions.mux-webhook] section exists
+  const muxWebhookSectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
+  const staticFilesRegex =
+    /^\s*static_files\s*=\s*\[\s*"\.\/functions\/mux-webhook\/mux\.toml"\s*\]\s*$/m;
+
+  const hasMuxWebhookSection = muxWebhookSectionRegex.test(configContent);
+
+  if (!hasMuxWebhookSection) {
+    console.log(
+      chalk.gray(
+        '[functions.mux-webhook] section not found in config.toml, skipping static_files configuration'
+      )
+    );
+    return;
+  }
+
+  // Check if static_files already exists in the mux-webhook section
+  const lines = configContent.split('\n');
+  let inMuxWebhookSection = false;
+  let hasStaticFiles = false;
+
+  for (const line of lines) {
+    if (line.match(muxWebhookSectionRegex)) {
+      inMuxWebhookSection = true;
+      continue;
+    }
+
+    if (inMuxWebhookSection) {
+      // If we hit another section, we're done with mux-webhook section
+      if (line.match(/^\[.*\]$/)) {
+        break;
+      }
+
+      if (line.match(staticFilesRegex)) {
+        hasStaticFiles = true;
+        break;
+      }
+    }
+  }
+
+  // If static_files is already configured, skip
+  if (hasStaticFiles) {
+    console.log(
+      chalk.gray(
+        '[functions.mux-webhook] already has static_files configuration'
+      )
+    );
+    return;
+  }
+
+  // Add static_files to the existing [functions.mux-webhook] section
+  const newLines = [];
+  inMuxWebhookSection = false;
+  let addedStaticFiles = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    newLines.push(line);
+
+    if (line.match(muxWebhookSectionRegex)) {
+      inMuxWebhookSection = true;
+      continue;
+    }
+
+    if (inMuxWebhookSection && !addedStaticFiles) {
+      // If we hit another section or end of file, add static_files before it
+      if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
+        const staticFilesLine =
+          'static_files = [ "./functions/mux-webhook/mux.toml" ]';
+
+        if (line.match(/^\[.*\]$/)) {
+          // Insert before the new section
+          newLines.splice(-1, 0, staticFilesLine);
+        } else {
+          // Add at the end
+          newLines.push(staticFilesLine);
+        }
+
+        addedStaticFiles = true;
+        inMuxWebhookSection = false;
+      }
+    }
+  }
+
+  configContent = newLines.join('\n');
+  fs.writeFileSync(configPath, configContent);
+
+  console.log(
+    chalk.green(
+      '✅ Added static_files to [functions.mux-webhook] in config.toml'
+    )
+  );
+}
+
 async function setupProcessQueueCron(): Promise<void> {
   const processQueueCronDir = path.join(
     supabaseDir,
@@ -327,6 +433,9 @@ export async function initWorkflowsCommand(): Promise<void> {
   checkIfSupabaseDirExists();
 
   await setupProcessQueueCron();
+
+  // Update config.toml for mux-webhook function
+  updateSupabaseConfigForMuxWebhook();
 
   try {
     await setupDatabase();
