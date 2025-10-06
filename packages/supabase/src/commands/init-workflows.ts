@@ -17,100 +17,65 @@ const muxSyncEngineVersion = packageJson.dependencies[
 const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
 
+function getWorkflowMigrationsPath(): string {
+  try {
+    // When running from built package, migrations are in dist/migrations
+    const packageJsonPath = require.resolve('@mux/supabase/package.json');
+    const packageDir = path.dirname(packageJsonPath);
+    const migrationsPath = path.join(packageDir, 'dist', 'migrations');
+
+    if (fs.existsSync(migrationsPath)) {
+      return migrationsPath;
+    }
+
+    // When running from source during development
+    const srcMigrationsPath = path.join(packageDir, 'src', 'migrations');
+    if (fs.existsSync(srcMigrationsPath)) {
+      return srcMigrationsPath;
+    }
+
+    throw new Error(
+      `Migrations directory not found at: ${migrationsPath} or ${srcMigrationsPath}`
+    );
+  } catch (error) {
+    // Fallback for local development when running directly from source
+    const localMigrationsPath = path.join(__dirname, '..', 'migrations');
+    if (fs.existsSync(localMigrationsPath)) {
+      return localMigrationsPath;
+    }
+
+    throw new Error(
+      `Failed to locate migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
 function getWorkflowMigrations(): { name: string; content: string }[] {
-  return [
-    {
-      name: 'mux_enable_pgmq',
-      content: `-- Enable the pgmq extension for message queues
-CREATE EXTENSION IF NOT EXISTS pgmq;
+  const migrationsPath = getWorkflowMigrationsPath();
 
-SELECT pgmq.create('workflow_messages');
+  if (!fs.existsSync(migrationsPath)) {
+    console.log(
+      chalk.yellow(`Migrations directory not found: ${migrationsPath}`)
+    );
+    return [];
+  }
 
-ALTER TABLE pgmq.q_workflow_messages ENABLE ROW LEVEL SECURITY;
+  const migrationFiles = fs
+    .readdirSync(migrationsPath)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
 
-CREATE SCHEMA if not exists pgmq_public;
--- 4) Grants for API roles
-grant usage on schema pgmq_public to anon, authenticated, service_role;
-grant execute on all functions in schema pgmq_public to anon, authenticated, service_role;
--- GRANT USAGE ON SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL TABLES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL ROUTINES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL SEQUENCES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON TABLES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+  const migrations: { name: string; content: string }[] = [];
 
-alter role authenticator
-set pgrst.db_schemas = 'public,graphql_public,pgmq_public';
-notify pgrst, 'reload config';
-notify pgrst, 'reload schema';`,
-    },
-    {
-      name: 'mux_expose_pgmq_functions',
-      content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
-returns bigint
-language sql
-security definer
-as $$
-select pgmq.send(queue_name => queue_name, msg => message);
-$$;
+  for (const file of migrationFiles) {
+    const fullPath = path.join(migrationsPath, file);
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    // Remove the timestamp and .sql extension to get a clean name
+    const name = file.replace(/^\d+_/, '').replace(/\.sql$/, '');
+    migrations.push({ name, content });
+  }
 
-create or replace function pgmq_public.read(queue_name text, sleep_seconds integer default 30, n integer default 1)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-select * from pgmq.read(queue_name => queue_name, vt => sleep_seconds, qty => n);
-$$;
-
-create or replace function pgmq_public.pop(queue_name text)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-select * from pgmq.pop(queue_name => queue_name);
-$$;
-
-create or replace function pgmq_public.delete(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-select pgmq.delete(queue_name => queue_name, msg_id => msg_id);
-$$;
-
-create or replace function pgmq_public.archive(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
-$$;`,
-    },
-    {
-      name: 'mux_setup_cron_job',
-      content: `-- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-
--- Create the cron job
-SELECT cron.schedule(
-'process-queue-cron',
-'10 seconds', -- Every 10s
-$$
-SELECT net.http_post(
-  url:=(select decrypted_secret from vault.decrypted_secrets where name = 'mux_supabase_url') || '/functions/v1/process-queue-cron',
-  headers:=jsonb_build_object(
-      'Content-type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'mux_supabase_service_role_key')
-  ),
-  body := jsonb_build_object('triggered_by', 'cron')
-);
-select * from net._http_response;
-$$
-);`,
-    },
-  ];
+  return migrations;
 }
 
 function createProcessQueueCronFunction(processQueueCronDir: string): void {
