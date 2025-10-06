@@ -9,7 +9,6 @@ import {
   createFunctionsEnvFile,
   shouldOverwriteFunction,
   runSupabaseMigrations,
-  setupDatabaseWithEnvLoading,
 } from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
@@ -228,20 +227,23 @@ async function setupMuxWebhook(): Promise<void> {
 function displayNextSteps(): void {
   console.log(chalk.blue.bold('\n🎉 Setup completed successfully!'));
   console.log(chalk.yellow('\nNext steps:'));
-  console.log('1. Configure Supabase Edge Function secrets:');
+  console.log('1. Set the required environment variables:');
   console.log('   - MUX_TOKEN_ID: Your Mux token ID');
   console.log('   - MUX_TOKEN_SECRET: Your Mux token secret');
-  console.log('   - MUX_WEBHOOK_SECRET: A secret key for webhook verification');
   console.log(
-    '2. Deploy the Edge Function: supabase functions deploy mux-webhook'
+    '2. Run the Edge Function locally: ' +
+      chalk.cyan('supabase functions serve mux-webhook')
   );
   console.log(
     '3. Configure your Mux webhook to point to your Supabase function URL'
   );
-  console.log('4. Test the webhook with a Mux event');
+  console.log(
+    '4. Set the MUX_WEBHOOK_SECRET variable: A secret key for webhook verification'
+  );
+  console.log('5. Test the webhook with a Mux event');
   console.log(
     chalk.gray(
-      '\n💡 Tip: You can set secrets in Supabase Dashboard > Settings > Edge Functions > Secrets'
+      '💡 Tip: For production development, you can set secrets in Supabase Dashboard > Settings > Edge Functions > Secrets'
     )
   );
   console.log(
@@ -252,8 +254,6 @@ function displayNextSteps(): void {
 }
 
 async function setupDatabase(): Promise<void> {
-  await setupDatabaseWithEnvLoading();
-
   console.log(
     chalk.blue('📦 Getting migration files from @mux/sync-engine...')
   );

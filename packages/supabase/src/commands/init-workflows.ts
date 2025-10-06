@@ -8,7 +8,6 @@ import {
   createFunctionsEnvFile,
   shouldOverwriteFunction,
   runSupabaseMigrations,
-  setupDatabaseWithEnvLoading,
 } from './utils';
 
 const muxSyncEngineVersion = packageJson.dependencies[
@@ -427,8 +426,8 @@ function displayNextSteps(): void {
   console.log('   - SUPABASE_URL: Your Supabase project URL');
   console.log('   - SUPABASE_SERVICE_ROLE_KEY: Your Supabase service role key');
   console.log(
-    '2. Deploy the Edge Function: ' +
-      chalk.cyan('supabase functions deploy process-queue-cron')
+    '2. Run the Edge Function locally: ' +
+      chalk.cyan('supabase functions serve process-queue-cron')
   );
   console.log('3. Verify the setup:');
   console.log('   - Check that pgmq extension is enabled');
@@ -445,13 +444,18 @@ function displayNextSteps(): void {
     )
   );
   console.log(
-    chalk.gray('   For local development, you can add them to your .env file')
+    chalk.gray(
+      '\n💡 Tip: For production development, you can set secrets in Supabase Dashboard > Settings > Edge Functions > Secrets'
+    )
+  );
+  console.log(
+    chalk.gray(
+      '   Or via CLI: supabase secrets set SUPABASE_URL="your-supabase-url" SUPABASE_SERVICE_ROLE_KEY="your_supabase_service_key"'
+    )
   );
 }
 
 async function setupDatabase(): Promise<void> {
-  await setupDatabaseWithEnvLoading();
-
   console.log(chalk.blue('📦 Getting workflow migration files...'));
   const migrations = getWorkflowMigrations();
 
