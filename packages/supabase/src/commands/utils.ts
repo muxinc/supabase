@@ -39,7 +39,7 @@ export async function promptForDatabaseUrl(): Promise<string> {
         chalk.gray(
           '\n💡 Tip: For production development, Click the "Connect" button in the Supabase dashboard\n' +
             'and use the "Session pooler" option toward the bottom. Replace [YOUR-PASSWORD]\n' +
-            'with the database password you configured when setting up your project'
+            'with the database password you configured when setting up your project\n'
         ),
       validate: (input: string) => {
         if (!input) return 'Database URL is required';
@@ -51,6 +51,37 @@ export async function promptForDatabaseUrl(): Promise<string> {
   ]);
 
   return answers.databaseUrl;
+}
+
+export async function promptForMuxCredentials(): Promise<{
+  muxTokenId: string;
+  muxTokenSecret: string;
+}> {
+  const { muxTokenId, muxTokenSecret } = await inquirer.prompt<{
+    muxTokenId: string;
+    muxTokenSecret: string;
+  }>([
+    {
+      type: 'input',
+      name: 'muxTokenId',
+      message: 'Enter your Mux token id:',
+      validate: (input: string) => {
+        if (!input) return 'Mux token id is required';
+        return true;
+      },
+    },
+    {
+      type: 'input',
+      name: 'muxTokenSecret',
+      message: 'Enter your Mux token secret:',
+      validate: (input: string) => {
+        if (!input) return 'Mux token secret is required';
+        return true;
+      },
+    },
+  ]);
+
+  return { muxTokenId, muxTokenSecret };
 }
 
 function getMigrationsPath(): string {
