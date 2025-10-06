@@ -183,9 +183,9 @@ function updateSupabaseConfigForVault(): void {
   let configToAdd = '';
 
   if (!hasVaultSection) {
-    // Add the entire section
+    // Add the entire section with a blank line before it
     configToAdd =
-      '\n[db.vault]\nmux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nmux_supabase_url = "env(SUPABASE_URL)"\n';
+      '\n\n[db.vault]\nmux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nmux_supabase_url = "env(SUPABASE_URL)"\n';
     configContent += configToAdd;
   } else {
     // Add missing keys to existing section
@@ -317,34 +317,46 @@ function updateSupabaseConfigForMuxWebhook(): void {
   const newLines = [];
   inMuxWebhookSection = false;
   let addedStaticFiles = false;
+  let lastNonEmptyLineIndex = -1;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    newLines.push(line);
 
     if (line.match(muxWebhookSectionRegex)) {
+      newLines.push(line);
       inMuxWebhookSection = true;
+      lastNonEmptyLineIndex = newLines.length - 1;
       continue;
     }
 
     if (inMuxWebhookSection && !addedStaticFiles) {
-      // If we hit another section or end of file, add static_files before it
+      // If we hit another section or end of file, add static_files after last non-empty line
       if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
         const staticFilesLine =
           'static_files = [ "./functions/mux-webhook/mux.toml" ]';
 
-        if (line.match(/^\[.*\]$/)) {
-          // Insert before the new section
-          newLines.splice(-1, 0, staticFilesLine);
-        } else {
-          // Add at the end
+        if (i === lines.length - 1 && line.trim() !== '') {
+          // Last line is non-empty, add it first
+          newLines.push(line);
           newLines.push(staticFilesLine);
+        } else {
+          // Insert after the last non-empty line in the section
+          newLines.splice(lastNonEmptyLineIndex + 1, 0, staticFilesLine);
+          newLines.push(line);
         }
 
         addedStaticFiles = true;
         inMuxWebhookSection = false;
+        continue;
+      }
+
+      // Track last non-empty line in the section
+      if (line.trim() !== '') {
+        lastNonEmptyLineIndex = newLines.length;
       }
     }
+
+    newLines.push(line);
   }
 
   configContent = newLines.join('\n');
