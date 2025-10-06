@@ -99,10 +99,10 @@ SELECT cron.schedule(
 '10 seconds', -- Every 10s
 $$
 SELECT net.http_post(
-  url:=(select decrypted_secret from vault.decrypted_secrets where name = 'supabase_url') || '/functions/v1/process-queue-cron',
+  url:=(select decrypted_secret from vault.decrypted_secrets where name = 'mux_supabase_url') || '/functions/v1/process-queue-cron',
   headers:=jsonb_build_object(
       'Content-type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'mux_supabase_service_role_key')
   ),
   body := jsonb_build_object('triggered_by', 'cron')
 );
@@ -168,12 +168,13 @@ function updateSupabaseConfigForVault(): void {
 
   // Check if [db.vault] section already exists
   const vaultSectionRegex = /^\[db\.vault\]\s*$/m;
-  const secretKeyRegex =
-    /^\s*secret_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
-  const supabaseUrlRegex = /^\s*supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
+  const serviceRoleKeyRegex =
+    /^\s*mux_supabase_service_role_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
+  const supabaseUrlRegex =
+    /^\s*mux_supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
 
   const hasVaultSection = vaultSectionRegex.test(configContent);
-  let hasSecretKey = false;
+  let hasServiceRoleKey = false;
   let hasSupabaseUrl = false;
 
   if (hasVaultSection) {
@@ -193,8 +194,8 @@ function updateSupabaseConfigForVault(): void {
           break;
         }
 
-        if (line.match(secretKeyRegex)) {
-          hasSecretKey = true;
+        if (line.match(serviceRoleKeyRegex)) {
+          hasServiceRoleKey = true;
         }
         if (line.match(supabaseUrlRegex)) {
           hasSupabaseUrl = true;
@@ -204,7 +205,7 @@ function updateSupabaseConfigForVault(): void {
   }
 
   // If everything is already configured, skip
-  if (hasVaultSection && hasSecretKey && hasSupabaseUrl) {
+  if (hasVaultSection && hasServiceRoleKey && hasSupabaseUrl) {
     console.log(
       chalk.gray(
         'config.toml already has [db.vault] section with required secrets'
@@ -219,7 +220,7 @@ function updateSupabaseConfigForVault(): void {
   if (!hasVaultSection) {
     // Add the entire section
     configToAdd =
-      '\n[db.vault]\nsecret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nsupabase_url = "env(SUPABASE_URL)"\n';
+      '\n[db.vault]\nmux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nmux_supabase_url = "env(SUPABASE_URL)"\n';
     configContent += configToAdd;
   } else {
     // Add missing keys to existing section
@@ -241,11 +242,13 @@ function updateSupabaseConfigForVault(): void {
         // If we hit another section or end of file, add missing keys before it
         if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
           const keysToAdd = [];
-          if (!hasSecretKey) {
-            keysToAdd.push('secret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"');
+          if (!hasServiceRoleKey) {
+            keysToAdd.push(
+              'mux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"'
+            );
           }
           if (!hasSupabaseUrl) {
-            keysToAdd.push('supabase_url = "env(SUPABASE_URL)"');
+            keysToAdd.push('mux_supabase_url = "env(SUPABASE_URL)"');
           }
 
           if (keysToAdd.length > 0) {
@@ -269,11 +272,11 @@ function updateSupabaseConfigForVault(): void {
   fs.writeFileSync(configPath, configContent);
 
   const addedItems = [];
-  if (!hasVaultSection || !hasSecretKey) {
-    addedItems.push('secret_key');
+  if (!hasVaultSection || !hasServiceRoleKey) {
+    addedItems.push('mux_supabase_service_role_key');
   }
   if (!hasVaultSection || !hasSupabaseUrl) {
-    addedItems.push('supabase_url');
+    addedItems.push('mux_supabase_url');
   }
 
   console.log(
