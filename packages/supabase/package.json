@@ -56,7 +56,8 @@
   "files": [
     "dist/index.cjs",
     "dist/index.js",
-    "dist/deno.js"
+    "dist/deno.js",
+    "dist/migrations"
   ],
   "dependencies": {
     "@mux/mux-node": "^12.7.0",

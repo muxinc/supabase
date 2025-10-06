@@ -16,100 +16,65 @@ const muxSyncEngineVersion = packageJson.dependencies[
 const muxSupabaseVersion = packageJson.version;
 const supabaseDir = 'supabase';
 
+function getWorkflowMigrationsPath(): string {
+  try {
+    // When running from built package, migrations are in dist/migrations
+    const packageJsonPath = require.resolve('@mux/supabase/package.json');
+    const packageDir = path.dirname(packageJsonPath);
+    const migrationsPath = path.join(packageDir, 'dist', 'migrations');
+
+    if (fs.existsSync(migrationsPath)) {
+      return migrationsPath;
+    }
+
+    // When running from source during development
+    const srcMigrationsPath = path.join(packageDir, 'src', 'migrations');
+    if (fs.existsSync(srcMigrationsPath)) {
+      return srcMigrationsPath;
+    }
+
+    throw new Error(
+      `Migrations directory not found at: ${migrationsPath} or ${srcMigrationsPath}`
+    );
+  } catch (error) {
+    // Fallback for local development when running directly from source
+    const localMigrationsPath = path.join(__dirname, '..', 'migrations');
+    if (fs.existsSync(localMigrationsPath)) {
+      return localMigrationsPath;
+    }
+
+    throw new Error(
+      `Failed to locate migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
 function getWorkflowMigrations(): { name: string; content: string }[] {
-  return [
-    {
-      name: 'mux_enable_pgmq',
-      content: `-- Enable the pgmq extension for message queues
-CREATE EXTENSION IF NOT EXISTS pgmq;
+  const migrationsPath = getWorkflowMigrationsPath();
 
-SELECT pgmq.create('workflow_messages');
+  if (!fs.existsSync(migrationsPath)) {
+    console.log(
+      chalk.yellow(`Migrations directory not found: ${migrationsPath}`)
+    );
+    return [];
+  }
 
-ALTER TABLE pgmq.q_workflow_messages ENABLE ROW LEVEL SECURITY;
+  const migrationFiles = fs
+    .readdirSync(migrationsPath)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
 
-CREATE SCHEMA if not exists pgmq_public;
--- 4) Grants for API roles
-grant usage on schema pgmq_public to anon, authenticated, service_role;
-grant execute on all functions in schema pgmq_public to anon, authenticated, service_role;
--- GRANT USAGE ON SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL TABLES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL ROUTINES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- GRANT ALL ON ALL SEQUENCES IN SCHEMA pgmq_public TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON TABLES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA pgmq_public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+  const migrations: { name: string; content: string }[] = [];
 
-alter role authenticator
-set pgrst.db_schemas = 'public,graphql_public,pgmq_public';
-notify pgrst, 'reload config';
-notify pgrst, 'reload schema';`,
-    },
-    {
-      name: 'mux_expose_pgmq_functions',
-      content: `create or replace function pgmq_public.send(queue_name text, message jsonb)
-returns bigint
-language sql
-security definer
-as $$
-select pgmq.send(queue_name => queue_name, msg => message);
-$$;
+  for (const file of migrationFiles) {
+    const fullPath = path.join(migrationsPath, file);
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    // Remove the timestamp and .sql extension to get a clean name
+    const name = file.replace(/^\d+_/, '').replace(/\.sql$/, '');
+    migrations.push({ name, content });
+  }
 
-create or replace function pgmq_public.read(queue_name text, sleep_seconds integer default 30, n integer default 1)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-select * from pgmq.read(queue_name => queue_name, vt => sleep_seconds, qty => n);
-$$;
-
-create or replace function pgmq_public.pop(queue_name text)
-returns setof pgmq.message_record
-language sql
-security definer
-as $$
-select * from pgmq.pop(queue_name => queue_name);
-$$;
-
-create or replace function pgmq_public.delete(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-select pgmq.delete(queue_name => queue_name, msg_id => msg_id);
-$$;
-
-create or replace function pgmq_public.archive(queue_name text, msg_id bigint)
-returns boolean
-language sql
-security definer
-as $$
-select pgmq.archive(queue_name => queue_name, msg_id => msg_id);
-$$;`,
-    },
-    {
-      name: 'mux_setup_cron_job',
-      content: `-- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-
--- Create the cron job
-SELECT cron.schedule(
-'process-queue-cron',
-'10 seconds', -- Every 10s
-$$
-SELECT net.http_post(
-  url:=(select decrypted_secret from vault.decrypted_secrets where name = 'supabase_url') || '/functions/v1/process-queue-cron',
-  headers:=jsonb_build_object(
-      'Content-type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
-  ),
-  body := jsonb_build_object('triggered_by', 'cron')
-);
-select * from net._http_response;
-$$
-);`,
-    },
-  ];
+  return migrations;
 }
 
 function createProcessQueueCronFunction(processQueueCronDir: string): void {
@@ -167,12 +132,13 @@ function updateSupabaseConfigForVault(): void {
 
   // Check if [db.vault] section already exists
   const vaultSectionRegex = /^\[db\.vault\]\s*$/m;
-  const secretKeyRegex =
-    /^\s*secret_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
-  const supabaseUrlRegex = /^\s*supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
+  const serviceRoleKeyRegex =
+    /^\s*mux_supabase_service_role_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
+  const supabaseUrlRegex =
+    /^\s*mux_supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
 
   const hasVaultSection = vaultSectionRegex.test(configContent);
-  let hasSecretKey = false;
+  let hasServiceRoleKey = false;
   let hasSupabaseUrl = false;
 
   if (hasVaultSection) {
@@ -192,8 +158,8 @@ function updateSupabaseConfigForVault(): void {
           break;
         }
 
-        if (line.match(secretKeyRegex)) {
-          hasSecretKey = true;
+        if (line.match(serviceRoleKeyRegex)) {
+          hasServiceRoleKey = true;
         }
         if (line.match(supabaseUrlRegex)) {
           hasSupabaseUrl = true;
@@ -203,7 +169,7 @@ function updateSupabaseConfigForVault(): void {
   }
 
   // If everything is already configured, skip
-  if (hasVaultSection && hasSecretKey && hasSupabaseUrl) {
+  if (hasVaultSection && hasServiceRoleKey && hasSupabaseUrl) {
     console.log(
       chalk.gray(
         'config.toml already has [db.vault] section with required secrets'
@@ -216,9 +182,9 @@ function updateSupabaseConfigForVault(): void {
   let configToAdd = '';
 
   if (!hasVaultSection) {
-    // Add the entire section
+    // Add the entire section with a blank line before it
     configToAdd =
-      '\n[db.vault]\nsecret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nsupabase_url = "env(SUPABASE_URL)"\n';
+      '\n\n[db.vault]\nmux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nmux_supabase_url = "env(SUPABASE_URL)"\n';
     configContent += configToAdd;
   } else {
     // Add missing keys to existing section
@@ -240,11 +206,13 @@ function updateSupabaseConfigForVault(): void {
         // If we hit another section or end of file, add missing keys before it
         if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
           const keysToAdd = [];
-          if (!hasSecretKey) {
-            keysToAdd.push('secret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"');
+          if (!hasServiceRoleKey) {
+            keysToAdd.push(
+              'mux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"'
+            );
           }
           if (!hasSupabaseUrl) {
-            keysToAdd.push('supabase_url = "env(SUPABASE_URL)"');
+            keysToAdd.push('mux_supabase_url = "env(SUPABASE_URL)"');
           }
 
           if (keysToAdd.length > 0) {
@@ -268,17 +236,166 @@ function updateSupabaseConfigForVault(): void {
   fs.writeFileSync(configPath, configContent);
 
   const addedItems = [];
-  if (!hasVaultSection || !hasSecretKey) {
-    addedItems.push('secret_key');
+  if (!hasVaultSection || !hasServiceRoleKey) {
+    addedItems.push('mux_supabase_service_role_key');
   }
   if (!hasVaultSection || !hasSupabaseUrl) {
-    addedItems.push('supabase_url');
+    addedItems.push('mux_supabase_url');
   }
 
   console.log(
     chalk.green(
       `✅ Added ${addedItems.join(' and ')} to [db.vault] in config.toml`
     )
+  );
+}
+
+function updateSupabaseConfigForMuxWebhook(): void {
+  const configPath = path.join(supabaseDir, 'config.toml');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      chalk.yellow('⚠️  config.toml not found in supabase directory')
+    );
+    return;
+  }
+
+  let configContent = fs.readFileSync(configPath, 'utf-8');
+
+  // Check if [functions.mux-webhook] section exists
+  const muxWebhookSectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
+  const staticFilesRegex =
+    /^\s*static_files\s*=\s*\[\s*"\.\/functions\/mux-webhook\/mux\.toml"\s*\]\s*$/m;
+
+  const hasMuxWebhookSection = muxWebhookSectionRegex.test(configContent);
+
+  if (!hasMuxWebhookSection) {
+    console.log(
+      chalk.gray(
+        '[functions.mux-webhook] section not found in config.toml, skipping static_files configuration'
+      )
+    );
+    return;
+  }
+
+  // Check if static_files already exists in the mux-webhook section
+  const lines = configContent.split('\n');
+  let inMuxWebhookSection = false;
+  let hasStaticFiles = false;
+
+  for (const line of lines) {
+    if (line.match(muxWebhookSectionRegex)) {
+      inMuxWebhookSection = true;
+      continue;
+    }
+
+    if (inMuxWebhookSection) {
+      // If we hit another section, we're done with mux-webhook section
+      if (line.match(/^\[.*\]$/)) {
+        break;
+      }
+
+      if (line.match(staticFilesRegex)) {
+        hasStaticFiles = true;
+        break;
+      }
+    }
+  }
+
+  // If static_files is already configured, skip
+  if (hasStaticFiles) {
+    console.log(
+      chalk.gray(
+        '[functions.mux-webhook] already has static_files configuration'
+      )
+    );
+    return;
+  }
+
+  // Add static_files to the existing [functions.mux-webhook] section
+  const newLines = [];
+  inMuxWebhookSection = false;
+  let addedStaticFiles = false;
+  let lastNonEmptyLineIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.match(muxWebhookSectionRegex)) {
+      newLines.push(line);
+      inMuxWebhookSection = true;
+      lastNonEmptyLineIndex = newLines.length - 1;
+      continue;
+    }
+
+    if (inMuxWebhookSection && !addedStaticFiles) {
+      // If we hit another section or end of file, add static_files after last non-empty line
+      if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
+        const staticFilesLine =
+          'static_files = [ "./functions/mux-webhook/mux.toml" ]';
+
+        if (i === lines.length - 1 && line.trim() !== '') {
+          // Last line is non-empty, add it first
+          newLines.push(line);
+          newLines.push(staticFilesLine);
+        } else {
+          // Insert after the last non-empty line in the section
+          newLines.splice(lastNonEmptyLineIndex + 1, 0, staticFilesLine);
+          newLines.push(line);
+        }
+
+        addedStaticFiles = true;
+        inMuxWebhookSection = false;
+        continue;
+      }
+
+      // Track last non-empty line in the section
+      if (line.trim() !== '') {
+        lastNonEmptyLineIndex = newLines.length;
+      }
+    }
+
+    newLines.push(line);
+  }
+
+  configContent = newLines.join('\n');
+  fs.writeFileSync(configPath, configContent);
+
+  console.log(
+    chalk.green(
+      '✅ Added static_files to [functions.mux-webhook] in config.toml'
+    )
+  );
+}
+
+function createMuxTomlFile(): void {
+  const muxWebhookDir = path.join(supabaseDir, 'functions', 'mux-webhook');
+
+  // Check if the mux-webhook directory exists
+  if (!fs.existsSync(muxWebhookDir)) {
+    console.log(
+      chalk.gray('mux-webhook directory not found, skipping mux.toml creation')
+    );
+    return;
+  }
+
+  const muxTomlPath = path.join(muxWebhookDir, 'mux.toml');
+
+  // Check if mux.toml already exists
+  if (fs.existsSync(muxTomlPath)) {
+    console.log(chalk.gray('mux.toml already exists in mux-webhook directory'));
+    return;
+  }
+
+  // Create mux.toml with the template content
+  const muxTomlContent = `# [workflows.content-moderation]
+# events = ["video.asset.track.ready"]
+`;
+
+  fs.writeFileSync(muxTomlPath, muxTomlContent);
+
+  console.log(
+    chalk.green('✅ Created mux.toml in supabase/functions/mux-webhook/')
   );
 }
 
@@ -363,6 +480,12 @@ export async function initWorkflowsCommand(): Promise<void> {
   checkIfSupabaseDirExists();
 
   await setupProcessQueueCron();
+
+  // Update config.toml for mux-webhook function
+  updateSupabaseConfigForMuxWebhook();
+
+  // Create mux.toml in mux-webhook directory
+  createMuxTomlFile();
 
   try {
     await setupDatabase();

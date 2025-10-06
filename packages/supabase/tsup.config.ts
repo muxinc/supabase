@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import fs from 'fs';
+import path from 'path';
 
 export default defineConfig([
   // Main CLI build
@@ -20,12 +22,34 @@ export default defineConfig([
     banner: {
       js: '#!/usr/bin/env node',
     },
-    noExternal: [/.*/],
     esbuildOptions(options) {
       options.define = {
         ...options.define,
         'process.env.NODE_ENV': '"production"',
       };
+    },
+    async onSuccess() {
+      // Copy migrations to dist
+      const migrationsSource = path.join(__dirname, 'src', 'migrations');
+      const migrationsTarget = path.join(__dirname, 'dist', 'migrations');
+
+      if (fs.existsSync(migrationsSource)) {
+        // Create target directory if it doesn't exist
+        if (!fs.existsSync(migrationsTarget)) {
+          fs.mkdirSync(migrationsTarget, { recursive: true });
+        }
+
+        // Copy all .sql files
+        const files = fs.readdirSync(migrationsSource);
+        for (const file of files) {
+          if (file.endsWith('.sql')) {
+            const sourcePath = path.join(migrationsSource, file);
+            const targetPath = path.join(migrationsTarget, file);
+            fs.copyFileSync(sourcePath, targetPath);
+          }
+        }
+        console.log('✅ Copied migration files to dist/migrations');
+      }
     },
   },
   // Deno-specific build
