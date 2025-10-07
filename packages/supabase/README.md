@@ -140,7 +140,7 @@ This will
 
 - Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
 - Set up 2 secrets in `db.vault`. When migrations are run, the vault values are updated. These values need to be in the vault in order for the workflows to be called
-- Create `supabase/functions/mux.toml` file, where you will configure workflows. It also contains a example of use with content-moderation workflow.
+- Create `supabase/functions/mux-webhook/mux.toml` file, where you will configure workflows. It also contains a example of use with content-moderation workflow.
 - Add `static_files` in the `config.toml` for the `mux-webhook` function
 
 
