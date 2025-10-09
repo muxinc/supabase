@@ -294,7 +294,7 @@ export function ensureTomlArrayItem(
     };
   }
 
-  const [fullMatch, prefix, arrayContent, suffix] = match;
+  const [_fullMatch, prefix, arrayContent, suffix] = match;
 
   // Format the new item
   const formattedItem = formatTomlValue(item);

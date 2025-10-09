@@ -118,7 +118,12 @@ function updateSupabaseConfig(): void {
   }
 
   // Add 'mux' to [api].schemas array
-  const schemasResult = ensureTomlArrayItem(configPath, 'api', 'schemas', 'mux');
+  const schemasResult = ensureTomlArrayItem(
+    configPath,
+    'api',
+    'schemas',
+    'mux'
+  );
   if (schemasResult.modified) {
     console.log(chalk.green('✅ Added "mux" to [api].schemas in config.toml'));
   } else if (schemasResult.message.includes('already exists')) {

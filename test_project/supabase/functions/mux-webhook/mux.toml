@@ -1,0 +1,2 @@
+# [workflows.content-moderation]
+# events = ["video.asset.track.ready"]

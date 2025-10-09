@@ -1,0 +1,64 @@
+name: Supabase Package Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/supabase/**'
+      - '.github/workflows/supabase-test.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/supabase/**'
+      - '.github/workflows/supabase-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/supabase/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/supabase
+        run: npm ci
+
+      - name: Build package
+        working-directory: packages/supabase
+        run: npm run build
+
+      - name: Run tests
+        working-directory: packages/supabase
+        run: npm test
+        env:
+          CI: true
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/supabase/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/supabase
+        run: npm ci
+
+      - name: Run linter
+        working-directory: packages/supabase
+        run: npm run lint
