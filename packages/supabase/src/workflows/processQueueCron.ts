@@ -29,6 +29,26 @@ async function processMessageWithCleanup(
 ): Promise<void> {
   const msgId = message.msg_id;
   const payload = message.message;
+  // set a reasonable constant here, later we can make this configurable in mux.toml
+  const MAX_READ_CT = 7;
+
+  if (message.read_ct > MAX_READ_CT) {
+    const { error: archiveError } = await supabase
+      .schema('pgmq_public')
+      .rpc('archive', {
+        queue_name: 'workflow_messages',
+        msg_id: msgId,
+      });
+
+    if (archiveError) {
+      console.error(`Failed to archive message ${msgId}:`, archiveError);
+    } else {
+      console.log(
+        `Message ${msgId} archived after maximum read_ct=${MAX_READ_CT}`
+      );
+    }
+    return;
+  }
 
   console.log(
     `Processing message ${msgId} read_ct=${message.read_ct} for workflow: ${payload.workflow_name}`
