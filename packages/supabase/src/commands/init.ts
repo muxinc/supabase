@@ -41,7 +41,7 @@ const muxSync = new MuxSync({
   muxTokenId,
   muxTokenSecret,
   backfillRelatedEntities: false,
-  revalidateEntityViaMuxApi: false,
+  revalidateEntityViaMuxApi: true,
   maxPostgresConnections: 5,
   logger: console
 })
