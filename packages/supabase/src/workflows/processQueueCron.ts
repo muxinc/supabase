@@ -29,6 +29,7 @@ async function processMessageWithCleanup(
 ): Promise<void> {
   const msgId = message.msg_id;
   const payload = message.message;
+  // set a reasonable constant here, later we can make this configurable in mux.toml
   const MAX_READ_CT = 7;
 
   if (message.read_ct > MAX_READ_CT) {
@@ -42,9 +43,11 @@ async function processMessageWithCleanup(
     if (archiveError) {
       console.error(`Failed to archive message ${msgId}:`, archiveError);
     } else {
-      console.log(`Message ${msgId} archived after maximum read_ct=${MAX_READ_CT}`);
+      console.log(
+        `Message ${msgId} archived after maximum read_ct=${MAX_READ_CT}`
+      );
     }
-    return
+    return;
   }
 
   console.log(

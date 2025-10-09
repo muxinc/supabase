@@ -48,7 +48,7 @@ module.exports = [
         Deno: 'readonly',
         EdgeRuntime: 'readonly',
         Request: 'readonly',
-        Response: 'readonly'
+        Response: 'readonly',
       },
     },
   },

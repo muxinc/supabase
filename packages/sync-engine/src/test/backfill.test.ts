@@ -239,12 +239,16 @@ describe('syncBackfill', () => {
     const updatedMockMux = {
       video: {
         assets: {
-          list: vitest.fn(() => createAsyncIterable([{
-            id: 'asset_test_123',
-            status: 'errored', // Changed status
-            created_at: '1640995200',
-            duration: 120.5,
-          }])),
+          list: vitest.fn(() =>
+            createAsyncIterable([
+              {
+                id: 'asset_test_123',
+                status: 'errored', // Changed status
+                created_at: '1640995200',
+                duration: 120.5,
+              },
+            ])
+          ),
         },
       },
     };
