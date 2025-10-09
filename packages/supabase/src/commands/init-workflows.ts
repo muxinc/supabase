@@ -9,6 +9,7 @@ import {
   shouldOverwriteFunction,
   runSupabaseMigrations,
 } from './utils';
+import { ensureTomlProperties, ensureTomlProperty } from './toml-modifications';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -128,126 +129,20 @@ function updateSupabaseConfigForVault(): void {
     return;
   }
 
-  let configContent = fs.readFileSync(configPath, 'utf-8');
+  const result = ensureTomlProperties(configPath, 'db.vault', {
+    mux_supabase_service_role_key: 'env(SUPABASE_SERVICE_ROLE_KEY)',
+    mux_supabase_url: 'env(SUPABASE_URL)',
+  });
 
-  // Check if [db.vault] section already exists
-  const vaultSectionRegex = /^\[db\.vault\]\s*$/m;
-  const serviceRoleKeyRegex =
-    /^\s*mux_supabase_service_role_key\s*=\s*"env\(SUPABASE_SERVICE_ROLE_KEY\)"\s*$/m;
-  const supabaseUrlRegex =
-    /^\s*mux_supabase_url\s*=\s*"env\(SUPABASE_URL\)"\s*$/m;
-
-  const hasVaultSection = vaultSectionRegex.test(configContent);
-  let hasServiceRoleKey = false;
-  let hasSupabaseUrl = false;
-
-  if (hasVaultSection) {
-    // Check if the required keys exist in the vault section
-    const lines = configContent.split('\n');
-    let inVaultSection = false;
-
-    for (const line of lines) {
-      if (line.match(vaultSectionRegex)) {
-        inVaultSection = true;
-        continue;
-      }
-
-      if (inVaultSection) {
-        // If we hit another section, we're done with vault section
-        if (line.match(/^\[.*\]$/)) {
-          break;
-        }
-
-        if (line.match(serviceRoleKeyRegex)) {
-          hasServiceRoleKey = true;
-        }
-        if (line.match(supabaseUrlRegex)) {
-          hasSupabaseUrl = true;
-        }
-      }
-    }
-  }
-
-  // If everything is already configured, skip
-  if (hasVaultSection && hasServiceRoleKey && hasSupabaseUrl) {
+  if (result.modified) {
+    console.log(chalk.green(`✅ ${result.message}`));
+  } else {
     console.log(
       chalk.gray(
         'config.toml already has [db.vault] section with required secrets'
       )
     );
-    return;
   }
-
-  // Build the configuration to add
-  let configToAdd = '';
-
-  if (!hasVaultSection) {
-    // Add the entire section with a blank line before it
-    configToAdd =
-      '\n\n[db.vault]\nmux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"\nmux_supabase_url = "env(SUPABASE_URL)"\n';
-    configContent += configToAdd;
-  } else {
-    // Add missing keys to existing section
-    const lines = configContent.split('\n');
-    const newLines = [];
-    let inVaultSection = false;
-    let addedKeys = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      newLines.push(line);
-
-      if (line.match(vaultSectionRegex)) {
-        inVaultSection = true;
-        continue;
-      }
-
-      if (inVaultSection && !addedKeys) {
-        // If we hit another section or end of file, add missing keys before it
-        if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
-          const keysToAdd = [];
-          if (!hasServiceRoleKey) {
-            keysToAdd.push(
-              'mux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"'
-            );
-          }
-          if (!hasSupabaseUrl) {
-            keysToAdd.push('mux_supabase_url = "env(SUPABASE_URL)"');
-          }
-
-          if (keysToAdd.length > 0) {
-            if (line.match(/^\[.*\]$/)) {
-              // Insert before the new section
-              newLines.splice(-1, 0, ...keysToAdd);
-            } else {
-              // Add at the end
-              newLines.push(...keysToAdd);
-            }
-          }
-          addedKeys = true;
-          inVaultSection = false;
-        }
-      }
-    }
-
-    configContent = newLines.join('\n');
-  }
-
-  fs.writeFileSync(configPath, configContent);
-
-  const addedItems = [];
-  if (!hasVaultSection || !hasServiceRoleKey) {
-    addedItems.push('mux_supabase_service_role_key');
-  }
-  if (!hasVaultSection || !hasSupabaseUrl) {
-    addedItems.push('mux_supabase_url');
-  }
-
-  console.log(
-    chalk.green(
-      `✅ Added ${addedItems.join(' and ')} to [db.vault] in config.toml`
-    )
-  );
 }
 
 function updateSupabaseConfigForMuxWebhook(): void {
@@ -260,16 +155,11 @@ function updateSupabaseConfigForMuxWebhook(): void {
     return;
   }
 
-  let configContent = fs.readFileSync(configPath, 'utf-8');
+  // Check if the mux-webhook section exists first
+  const configContent = fs.readFileSync(configPath, 'utf-8');
+  const sectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
 
-  // Check if [functions.mux-webhook] section exists
-  const muxWebhookSectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
-  const staticFilesRegex =
-    /^\s*static_files\s*=\s*\[\s*"\.\/functions\/mux-webhook\/mux\.toml"\s*\]\s*$/m;
-
-  const hasMuxWebhookSection = muxWebhookSectionRegex.test(configContent);
-
-  if (!hasMuxWebhookSection) {
+  if (!sectionRegex.test(configContent)) {
     console.log(
       chalk.gray(
         '[functions.mux-webhook] section not found in config.toml, skipping static_files configuration'
@@ -278,94 +168,26 @@ function updateSupabaseConfigForMuxWebhook(): void {
     return;
   }
 
-  // Check if static_files already exists in the mux-webhook section
-  const lines = configContent.split('\n');
-  let inMuxWebhookSection = false;
-  let hasStaticFiles = false;
+  const result = ensureTomlProperty(
+    configPath,
+    'functions.mux-webhook',
+    'static_files',
+    ['./functions/mux-webhook/mux.toml']
+  );
 
-  for (const line of lines) {
-    if (line.match(muxWebhookSectionRegex)) {
-      inMuxWebhookSection = true;
-      continue;
-    }
-
-    if (inMuxWebhookSection) {
-      // If we hit another section, we're done with mux-webhook section
-      if (line.match(/^\[.*\]$/)) {
-        break;
-      }
-
-      if (line.match(staticFilesRegex)) {
-        hasStaticFiles = true;
-        break;
-      }
-    }
-  }
-
-  // If static_files is already configured, skip
-  if (hasStaticFiles) {
+  if (result.modified) {
+    console.log(
+      chalk.green(
+        '✅ Added static_files to [functions.mux-webhook] in config.toml'
+      )
+    );
+  } else {
     console.log(
       chalk.gray(
         '[functions.mux-webhook] already has static_files configuration'
       )
     );
-    return;
   }
-
-  // Add static_files to the existing [functions.mux-webhook] section
-  const newLines = [];
-  inMuxWebhookSection = false;
-  let addedStaticFiles = false;
-  let lastNonEmptyLineIndex = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.match(muxWebhookSectionRegex)) {
-      newLines.push(line);
-      inMuxWebhookSection = true;
-      lastNonEmptyLineIndex = newLines.length - 1;
-      continue;
-    }
-
-    if (inMuxWebhookSection && !addedStaticFiles) {
-      // If we hit another section or end of file, add static_files after last non-empty line
-      if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
-        const staticFilesLine =
-          'static_files = [ "./functions/mux-webhook/mux.toml" ]';
-
-        if (i === lines.length - 1 && line.trim() !== '') {
-          // Last line is non-empty, add it first
-          newLines.push(line);
-          newLines.push(staticFilesLine);
-        } else {
-          // Insert after the last non-empty line in the section
-          newLines.splice(lastNonEmptyLineIndex + 1, 0, staticFilesLine);
-          newLines.push(line);
-        }
-
-        addedStaticFiles = true;
-        inMuxWebhookSection = false;
-        continue;
-      }
-
-      // Track last non-empty line in the section
-      if (line.trim() !== '') {
-        lastNonEmptyLineIndex = newLines.length;
-      }
-    }
-
-    newLines.push(line);
-  }
-
-  configContent = newLines.join('\n');
-  fs.writeFileSync(configPath, configContent);
-
-  console.log(
-    chalk.green(
-      '✅ Added static_files to [functions.mux-webhook] in config.toml'
-    )
-  );
 }
 
 function createMuxTomlFile(): void {
