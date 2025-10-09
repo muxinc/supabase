@@ -2,20 +2,24 @@
 -- Enforces access control at the database level
 
 -- Enable RLS on all Mux tables
-alter table "mux"."assets" enable row level security;
-alter table "mux"."live_streams" enable row level security;
-alter table "mux"."uploads" enable row level security;
-alter table "mux"."webhook_events" enable row level security;
+ALTER TABLE "mux"."assets"          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mux"."live_streams"    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mux"."uploads"         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "mux"."webhook_events"  ENABLE ROW LEVEL SECURITY;
 
 -- Block all direct client access (data should only be accessed through API)
-create policy "Block all client access" on "mux"."assets"
-    for all using (false);
+DROP POLICY IF EXISTS "Block all client access" ON "mux"."assets";
+CREATE POLICY "Block all client access" ON "mux"."assets"
+  FOR ALL USING (false);
 
-create policy "Block all client access" on "mux"."live_streams"
-    for all using (false);
+DROP POLICY IF EXISTS "Block all client access" ON "mux"."live_streams";
+CREATE POLICY "Block all client access" ON "mux"."live_streams"
+  FOR ALL USING (false);
 
-create policy "Block all client access" on "mux"."uploads"
-    for all using (false);
+DROP POLICY IF EXISTS "Block all client access" ON "mux"."uploads";
+CREATE POLICY "Block all client access" ON "mux"."uploads"
+  FOR ALL USING (false);
 
-create policy "Block all client access" on "mux"."webhook_events"
-    for all using (false);
+DROP POLICY IF EXISTS "Block all client access" ON "mux"."webhook_events";
+CREATE POLICY "Block all client access" ON "mux"."webhook_events"
+  FOR ALL USING (false);
