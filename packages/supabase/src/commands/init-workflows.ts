@@ -389,7 +389,7 @@ function createMuxTomlFile(): void {
 
   // Create mux.toml with the template content
   const muxTomlContent = `# [workflows.content-moderation]
-# events = ["video.asset.track.ready"]
+# events = ["video.asset.ready"]
 `;
 
   fs.writeFileSync(muxTomlPath, muxTomlContent);

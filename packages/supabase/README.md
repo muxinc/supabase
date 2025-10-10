@@ -151,10 +151,10 @@ Define a workflow and when it should run:
 ```toml
 # supabase/functions/mux-webhook/mux.toml
 [workflows.content-moderation]
-events = ["video.asset.track.ready"]
+events = ["video.asset.ready"]
 ```
 
-This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
+This means that when the `video.asset.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
 
 Create the Supabase Edge Function:
 
@@ -168,13 +168,13 @@ Open up supabase/functions/content-moderation/index.ts
 Deno.serve(async (req) => {
   try {
     const event = (await req.json()) as UnwrapWebhookEvent;
-    const track = event.data;
-    if (!track) {
-      console.log('No text track');
+    const asset = event.data;
+    if (!asset) {
+      console.log('No asset in webhook');
       return new Response('No asset in webhook', { status: 500 });
     }
 
-    console.log(`Running modeartion for asset: ${track.asset_id}`)
+    console.log(`Running modeartion for asset: ${asset.id}`)
     // do your logic to make API calls, write data into your db, etc
     return new Response('Moderation complete', { status: 200 });
   } catch (error) {
@@ -194,9 +194,7 @@ Deno.serve(async (req) => {
 
 To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset and see that your content-moderation function runs.
 
-**Example: Testing with Auto Captions**
-
-To test this workflow, you can upload an Asset to Mux with auto captions enabled. This will trigger the `video.asset.track.ready` event when the captions are processed. You can do this either by creating an asset programmatically with `generated_subtitles` enabled, or by uploading a video directly in the Mux dashboard and enabling "Auto-Generate Captions" in the upload settings. Once the captions are processed, the `video.asset.track.ready` event will be fired and your workflow will execute.
+To test this workflow, you can upload an Asset to Mux. This will trigger the `video.asset.ready` event when the Asset is ready for playback. You can do this either by creating an asset programmatically, or by uploading a video directly in the Mux dashboard.
 
 **Troubleshooting**
 
