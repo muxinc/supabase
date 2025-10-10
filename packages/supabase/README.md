@@ -168,13 +168,13 @@ Open up supabase/functions/content-moderation/index.ts
 Deno.serve(async (req) => {
   try {
     const event = (await req.json()) as UnwrapWebhookEvent;
-    const asset = event.data;
+    const track = event.data;
     if (!track) {
       console.log('No text track');
       return new Response('No asset in webhook', { status: 500 });
     }
 
-    console.log(`Running modeartion for: ${asset.id}`)
+    console.log(`Running modeartion for asset: ${track.asset_id}`)
     // do your logic to make API calls, write data into your db, etc
     return new Response('Moderation complete', { status: 200 });
   } catch (error) {
