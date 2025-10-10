@@ -154,7 +154,7 @@ Define a workflow and when it should run:
 events = ["video.asset.ready"]
 ```
 
-This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
+This means that when the `video.asset.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
 
 Create the Supabase Edge Function:
 
@@ -169,12 +169,12 @@ Deno.serve(async (req) => {
   try {
     const event = (await req.json()) as UnwrapWebhookEvent;
     const asset = event.data;
-    if (!track) {
-      console.log('No text track');
+    if (!asset) {
+      console.log('No asset in webhook');
       return new Response('No asset in webhook', { status: 500 });
     }
 
-    console.log(`Running modeartion for: ${asset.id}`)
+    console.log(`Running modeartion for asset: ${asset.id}`)
     // do your logic to make API calls, write data into your db, etc
     return new Response('Moderation complete', { status: 200 });
   } catch (error) {
@@ -193,6 +193,8 @@ Deno.serve(async (req) => {
 **Testing**
 
 To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset and see that your content-moderation function runs.
+
+To test this workflow, you can upload an Asset to Mux. This will trigger the `video.asset.ready` event when the Asset is ready for playback. You can do this either by creating an asset programmatically, or by uploading a video directly in the Mux dashboard.
 
 **Troubleshooting**
 
