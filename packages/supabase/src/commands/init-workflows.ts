@@ -9,7 +9,11 @@ import {
   shouldOverwriteFunction,
   runSupabaseMigrations,
 } from './utils';
-import { ensureTomlProperties, ensureTomlProperty, ensureTomlArrayItem } from './toml-modifications';
+import {
+  ensureTomlProperties,
+  ensureTomlProperty,
+  ensureTomlArrayItem,
+} from './toml-modifications';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -163,9 +167,13 @@ function updateSupabaseConfigForSchemas(): void {
   );
 
   if (schemasResult.modified) {
-    console.log(chalk.green('✅ Added "pgmq_public" to [api].schemas in config.toml'));
+    console.log(
+      chalk.green('✅ Added "pgmq_public" to [api].schemas in config.toml')
+    );
   } else if (schemasResult.message.includes('already exists')) {
-    console.log(chalk.gray('config.toml already has "pgmq_public" in [api].schemas'));
+    console.log(
+      chalk.gray('config.toml already has "pgmq_public" in [api].schemas')
+    );
   }
 }
 
