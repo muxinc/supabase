@@ -9,7 +9,7 @@ import {
   shouldOverwriteFunction,
   runSupabaseMigrations,
 } from './utils';
-import { ensureTomlProperties, ensureTomlProperty } from './toml-modifications';
+import { ensureTomlProperties, ensureTomlProperty, ensureTomlArrayItem } from './toml-modifications';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -142,6 +142,30 @@ function updateSupabaseConfigForVault(): void {
         'config.toml already has [db.vault] section with required secrets'
       )
     );
+  }
+}
+
+function updateSupabaseConfigForSchemas(): void {
+  const configPath = path.join(supabaseDir, 'config.toml');
+
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      chalk.yellow('⚠️  config.toml not found in supabase directory')
+    );
+    return;
+  }
+
+  const schemasResult = ensureTomlArrayItem(
+    configPath,
+    'api',
+    'schemas',
+    'pgmq_public'
+  );
+
+  if (schemasResult.modified) {
+    console.log(chalk.green('✅ Added "pgmq_public" to [api].schemas in config.toml'));
+  } else if (schemasResult.message.includes('already exists')) {
+    console.log(chalk.gray('config.toml already has "pgmq_public" in [api].schemas'));
   }
 }
 
@@ -302,6 +326,9 @@ export async function initWorkflowsCommand(): Promise<void> {
   checkIfSupabaseDirExists();
 
   await setupProcessQueueCron();
+
+  // Update config.toml for schemas
+  updateSupabaseConfigForSchemas();
 
   // Update config.toml for mux-webhook function
   updateSupabaseConfigForMuxWebhook();
