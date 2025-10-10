@@ -10,6 +10,7 @@ import {
   shouldOverwriteFunction,
   runSupabaseMigrations,
 } from './utils';
+import { ensureTomlProperty, ensureTomlArrayItem } from './toml-modifications';
 
 const muxSyncEngineVersion = packageJson.dependencies[
   '@mux/sync-engine'
@@ -116,98 +117,40 @@ function updateSupabaseConfig(): void {
     return;
   }
 
-  let configContent = fs.readFileSync(configPath, 'utf-8');
-
-  // Check if [functions.mux-webhook] section with verify_jwt = false already exists
-  const muxWebhookSectionRegex = /^\[functions\.mux-webhook\]\s*$/m;
-  const verifyJwtRegex = /^\s*verify_jwt\s*=\s*false\s*$/m;
-
-  const hasMuxWebhookSection = muxWebhookSectionRegex.test(configContent);
-
-  if (hasMuxWebhookSection) {
-    // Check if verify_jwt = false exists in the mux-webhook section
-    const lines = configContent.split('\n');
-    let inMuxWebhookSection = false;
-    let hasVerifyJwt = false;
-
-    for (const line of lines) {
-      if (line.match(muxWebhookSectionRegex)) {
-        inMuxWebhookSection = true;
-        continue;
-      }
-
-      if (inMuxWebhookSection) {
-        // If we hit another section, we're done with mux-webhook section
-        if (line.match(/^\[.*\]$/)) {
-          break;
-        }
-
-        if (line.match(verifyJwtRegex)) {
-          hasVerifyJwt = true;
-          break;
-        }
-      }
-    }
-
-    if (hasVerifyJwt) {
-      console.log(
-        chalk.gray(
-          'config.toml already has verify_jwt = false for mux-webhook function'
-        )
-      );
-      return;
-    }
-  }
-
-  // Add the configuration
-  const configToAdd = hasMuxWebhookSection
-    ? '\nverify_jwt = false\n'
-    : '\n[functions.mux-webhook]\nverify_jwt = false\n';
-
-  if (hasMuxWebhookSection) {
-    // Find the mux-webhook section and add verify_jwt after it
-    const lines = configContent.split('\n');
-    const newLines = [];
-    let inMuxWebhookSection = false;
-    let addedVerifyJwt = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      newLines.push(line);
-
-      if (line.match(muxWebhookSectionRegex)) {
-        inMuxWebhookSection = true;
-        continue;
-      }
-
-      if (inMuxWebhookSection && !addedVerifyJwt) {
-        // If we hit another section or end of file, add verify_jwt before it
-        if (line.match(/^\[.*\]$/) || i === lines.length - 1) {
-          if (line.match(/^\[.*\]$/)) {
-            // Insert before the new section
-            newLines.splice(-1, 0, 'verify_jwt = false');
-          } else {
-            // Add at the end
-            newLines.push('verify_jwt = false');
-          }
-          addedVerifyJwt = true;
-          inMuxWebhookSection = false;
-        }
-      }
-    }
-
-    configContent = newLines.join('\n');
-  } else {
-    // Append the entire section at the end
-    configContent += configToAdd;
-  }
-
-  fs.writeFileSync(configPath, configContent);
-  console.log(
-    chalk.green(
-      '✅ Added verify_jwt = false to [functions.mux-webhook] in config.toml'
-    )
+  // Add 'mux' to [api].schemas array
+  const schemasResult = ensureTomlArrayItem(
+    configPath,
+    'api',
+    'schemas',
+    'mux'
   );
+  if (schemasResult.modified) {
+    console.log(chalk.green('✅ Added "mux" to [api].schemas in config.toml'));
+  } else if (schemasResult.message.includes('already exists')) {
+    console.log(chalk.gray('config.toml already has "mux" in [api].schemas'));
+  }
+
+  // Add verify_jwt = false to [functions.mux-webhook]
+  const result = ensureTomlProperty(
+    configPath,
+    'functions.mux-webhook',
+    'verify_jwt',
+    false
+  );
+
+  if (result.modified) {
+    console.log(
+      chalk.green(
+        '✅ Added verify_jwt = false to [functions.mux-webhook] in config.toml'
+      )
+    );
+  } else {
+    console.log(
+      chalk.gray(
+        'config.toml already has verify_jwt = false for mux-webhook function'
+      )
+    );
+  }
 }
 
 async function setupMuxWebhook(): Promise<void> {
