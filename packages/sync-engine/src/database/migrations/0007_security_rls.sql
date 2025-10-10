@@ -18,22 +18,18 @@ ALTER TABLE "mux"."webhook_events"  ENABLE ROW LEVEL SECURITY;
 
 -- Block all client access - only service_role can bypass RLS
 -- These policies ensure anon and authenticated roles cannot access data
-DROP POLICY IF EXISTS "Block all client access" ON "mux"."assets";
 DROP POLICY IF EXISTS "Block client access" ON "mux"."assets";
 CREATE POLICY "Block client access" ON "mux"."assets"
   FOR ALL USING (false);
 
-DROP POLICY IF EXISTS "Block all client access" ON "mux"."live_streams";
 DROP POLICY IF EXISTS "Block client access" ON "mux"."live_streams";
 CREATE POLICY "Block client access" ON "mux"."live_streams"
   FOR ALL USING (false);
 
-DROP POLICY IF EXISTS "Block all client access" ON "mux"."uploads";
 DROP POLICY IF EXISTS "Block client access" ON "mux"."uploads";
 CREATE POLICY "Block client access" ON "mux"."uploads"
   FOR ALL USING (false);
 
-DROP POLICY IF EXISTS "Block all client access" ON "mux"."webhook_events";
 DROP POLICY IF EXISTS "Block client access" ON "mux"."webhook_events";
 CREATE POLICY "Block client access" ON "mux"."webhook_events"
   FOR ALL USING (false);
