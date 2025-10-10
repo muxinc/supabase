@@ -151,7 +151,7 @@ Define a workflow and when it should run:
 ```toml
 # supabase/functions/mux-webhook/mux.toml
 [workflows.content-moderation]
-events = ["video.asset.ready"]
+events = ["video.asset.track.ready"]
 ```
 
 This means that when the `video.asset.track.ready` event fires, it will run your Supabase Edge Function called `content-moderation`
@@ -193,6 +193,10 @@ Deno.serve(async (req) => {
 **Testing**
 
 To test, run `supabase functions serve`, this will execute all created functions and then try creating an Asset and see that your content-moderation function runs.
+
+**Example: Testing with Auto Captions**
+
+To test this workflow, you can upload an Asset to Mux with auto captions enabled. This will trigger the `video.asset.track.ready` event when the captions are processed. You can do this either by creating an asset programmatically with `generated_subtitles` enabled, or by uploading a video directly in the Mux dashboard and enabling "Auto-Generate Captions" in the upload settings. Once the captions are processed, the `video.asset.track.ready` event will be fired and your workflow will execute.
 
 **Troubleshooting**
 
