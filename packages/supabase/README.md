@@ -30,7 +30,9 @@ This will:
 
 - Create the `mux` schema and corresponding tables
 - Create a function in `/supabase/functions/mux-webhook` which uses the `@mux/sync-engine` package to sync your data
-- Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`.
+- Prompt you to configure the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`
+- Expose the `mux` schema in the `[api]` section of `config.toml` to enable API requests to the Mux tables
+  - If you want to make API requests and Supabase is already running, you need to restart the instance (`supabase stop` and `supabase start`) for the `config.toml` changes to take effect properly
 
 **Running the Webhook locally**
 
@@ -136,12 +138,15 @@ You should only run this command after you have gone through the `@mux/supabase 
 npx @mux/supabase init-workflows
 ```
 
+If Supabase is running, you need to restart the instance (`supabase stop` and `supabase start`) for the `config.toml` changes to be applied correctly.
+
 This will
 
 - Set-up and run migrations to set up Supabase Queues & Supabase Cron. Both of these are required to run workflows
 - Set up 2 secrets in `db.vault`. When migrations are run, the vault values are updated. These values need to be in the vault in order for the workflows to be called
 - Create `supabase/functions/mux-webhook/mux.toml` file, where you will configure workflows. It also contains a example of use with content-moderation workflow.
 - Add `static_files` in the `config.toml` for the `mux-webhook` function
+- Expose the `pgmq_public` schema to enable inserting workflows into the queue
 
 
 Define a workflow and when it should run:
@@ -227,7 +232,16 @@ supabase db push
 ```
 This will create the tables you had locally from the migrations folder.
 
-**3. Set secrets for Edge Functions:**
+**3. Expose Mux and pgmq_public schemas:**
+
+To make API requests to Mux tables with the Service Role Key, you need to expose the Mux schema in Supabase.
+If you initialized workflows, you also need to expose the pgmq_public schema.
+
+You can do this in 2 ways:
+- Manually in the Supabase Dashboard: Go to Project Settings -> Data API -> Exposed schemas. Add `mux` and `pgmq_public`.
+- With the `supabase config push` command: This will take all the configuration from `config.toml` and apply it to your project.
+
+**4. Set secrets for Edge Functions:**
 
 You can do this in 2 ways:
 - Set manually in the Dashboard
@@ -241,14 +255,14 @@ Make sure you have the .env file in the functions folder with your correct crede
 
 Note: You can have a `.env.production` file to manage 2 environments if desired.
 
-**4. Deploy functions:**
+**5. Deploy functions:**
 
 Once ready, deploy the functions with:
 ```bash
 supabase functions deploy
 ```
 
-**5. Set up the webhook:**
+**6. Set up the webhook:**
 
 When everything is ready, we need to properly set the `MUX_WEBHOOK_SECRET`. Once the mux-webhook is deployed in Supabase, the URL will appear in Dashboard -> Edge Functions.
 
