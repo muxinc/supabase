@@ -1,6 +1,6 @@
 {
   "name": "@mux/sync-engine",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Mux Sync Engine to sync Mux data based on webhooks to Postgres",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -55,7 +55,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mux/mux-node": "^12.3.0",
+    "@mux/ts": "^15.4.0",
     "pg": "^8.16.0",
     "pg-node-migrations": "0.0.8",
     "pino": "^9.7.0",

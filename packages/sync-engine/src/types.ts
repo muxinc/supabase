@@ -1,3 +1,5 @@
+import type { Mux } from '@mux/ts';
+
 export type Logger = Pick<
   globalThis.Console,
   'info' | 'error' | 'warn' | 'debug'
@@ -91,3 +93,6 @@ export interface UpsertResult {
 }
 
 export type EntitySchema = import('./schemas/types').EntitySchema;
+
+// @mux/ts does not export HeadersLike; derive it from the public unwrap signature
+export type HeadersLike = Parameters<Mux['webhooks']['unwrap']>[1];

@@ -9,7 +9,7 @@ export default defineConfig({
   clean: true,
   target: ['node18', 'es2022'],
   outDir: 'dist',
-  external: ['pg', '@mux/mux-node'],
+  external: ['pg', '@mux/ts'],
   treeshake: true,
   minify: false,
   esbuildOptions(options) {

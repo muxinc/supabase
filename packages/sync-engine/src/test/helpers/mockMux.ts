@@ -146,11 +146,11 @@ export const mockMux = {
     },
   },
   webhooks: {
-    unwrap: vitest.fn((payload, _headers) => {
+    unwrap: vitest.fn(async (payload, _headers) => {
       // Mock webhook unwrapping - in real implementation this verifies signature
       const event = JSON.parse(payload);
 
-      // Convert Unix timestamp to ISO string like the real Mux SDK does
+      // Fixtures use epoch seconds; real payloads carry ISO strings
       const created_at = event.created_at || 1640995200;
       const createdAtISO =
         typeof created_at === 'number'
