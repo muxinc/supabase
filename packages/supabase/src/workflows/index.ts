@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { parse as parseToml } from 'toml';
 import { Mux } from '@mux/ts';
 
-// @mux/ts does not export HeadersLike; derive it from the public unwrap signature
+// Not exported by @mux/ts
 type HeadersLike = Parameters<Mux['webhooks']['unwrap']>[1];
 
 interface WorkflowConfig {

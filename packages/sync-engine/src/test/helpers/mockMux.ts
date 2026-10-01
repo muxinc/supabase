@@ -150,7 +150,7 @@ export const mockMux = {
       // Mock webhook unwrapping - in real implementation this verifies signature
       const event = JSON.parse(payload);
 
-      // Fixtures use epoch seconds; real payloads carry ISO strings
+      // Fixtures use epoch seconds
       const created_at = event.created_at || 1640995200;
       const createdAtISO =
         typeof created_at === 'number'

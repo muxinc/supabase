@@ -94,5 +94,5 @@ export interface UpsertResult {
 
 export type EntitySchema = import('./schemas/types').EntitySchema;
 
-// @mux/ts does not export HeadersLike; derive it from the public unwrap signature
+// Not exported by @mux/ts
 export type HeadersLike = Parameters<Mux['webhooks']['unwrap']>[1];
