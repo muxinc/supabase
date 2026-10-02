@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { parse as parseToml } from 'toml';
-import { HeadersLike } from '@mux/mux-node/core';
-import { Mux } from '@mux/mux-node';
+import { Mux } from '@mux/ts';
+
+// Not exported by @mux/ts
+type HeadersLike = Parameters<Mux['webhooks']['unwrap']>[1];
 
 interface WorkflowConfig {
   [functionName: string]: string[];
@@ -112,7 +114,7 @@ export async function queueWorkflowsForEvent(
       tokenSecret: Deno.env.get('MUX_TOKEN_SECRET'),
       webhookSecret: Deno.env.get('MUX_WEBHOOK_SECRET'),
     });
-    const event = mux.webhooks.unwrap(payload, headers);
+    const event = await mux.webhooks.unwrap(payload, headers);
     console.log('Received Mux webhook:', event.type);
 
     // Scan for functions that handle this event type

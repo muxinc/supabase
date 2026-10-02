@@ -27,7 +27,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@mux/mux-node": "^12.1.0",
+    "@mux/ts": "^15.5.0",
     "@supabase/supabase-js": "^2.45.4",
     "dotenv": "^17.1.0"
   },

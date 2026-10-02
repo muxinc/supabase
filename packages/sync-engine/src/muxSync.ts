@@ -1,4 +1,4 @@
-import { Mux } from '@mux/mux-node';
+import { Mux } from '@mux/ts';
 import { PostgresClient } from './database/postgres';
 import { muxAssetsSchema } from './schemas/mux_assets';
 import { muxLiveStreamsSchema } from './schemas/mux_live_streams';
@@ -14,8 +14,8 @@ import {
   StaticRenditionData,
   TrackData,
   EntitySchema,
+  HeadersLike,
 } from './types';
-import { HeadersLike } from '@mux/mux-node/core';
 
 const DEFAULT_SCHEMA = 'mux';
 
@@ -42,7 +42,7 @@ export class MuxSync {
   }
 
   async processWebhook(payload: string, headers: HeadersLike) {
-    const event = this.mux.webhooks.unwrap(payload, headers);
+    const event = await this.mux.webhooks.unwrap(payload, headers);
     this.logger.info(`Received webhook ${event.id}: ${event.type}`);
 
     // Store the webhook event and payload

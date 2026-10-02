@@ -71,7 +71,7 @@ export default defineConfig([
       /^npm:/, // Keep node: and npm: imports external (after plugin rewrites)
       // Packages that should be external for Deno
       '@supabase/supabase-js',
-      '@mux/mux-node',
+      '@mux/ts',
       'toml',
     ],
     noExternal: [], // Override any noExternal from base config
