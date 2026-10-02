@@ -55,7 +55,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@mux/ts": "^15.4.0",
+    "@mux/ts": "^15.5.0",
     "pg": "^8.16.0",
     "pg-node-migrations": "0.0.8",
     "pino": "^9.7.0",
