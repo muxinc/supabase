@@ -1,6 +1,6 @@
 {
   "name": "@mux/supabase",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "CLI tool to initialize Mux Sync Engine with Supabase",
   "keywords": [
     "mux",
@@ -64,8 +64,8 @@
   ],
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "@mux/sync-engine": "^0.0.6",
-    "@mux/ts": "^15.5.0",
+    "@mux/sync-engine": "^0.0.7",
+    "@mux/ts": "^16.0.0",
     "@supabase/supabase-js": "^2.57.4",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",
